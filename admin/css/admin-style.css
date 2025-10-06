@@ -1,0 +1,116 @@
+/* Bazarino Admin Panel Styles */
+
+.bazarino-admin-container {
+    max-width: 1200px;
+    margin: 20px 0;
+}
+
+.bazarino-admin-section {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    margin-bottom: 20px;
+    padding: 20px;
+}
+
+.bazarino-admin-section h2 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Sortable Widget List */
+.bazarino-sortable {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+    max-width: 400px;
+}
+
+.bazarino-widget-item {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    cursor: move;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.bazarino-widget-item:hover {
+    background: #e9ecef;
+    border-color: #bbb;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.bazarino-widget-item .dashicons {
+    color: #666;
+}
+
+.bazarino-widget-item.ui-sortable-helper {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    opacity: 0.8;
+}
+
+.bazarino-widget-item.ui-sortable-placeholder {
+    border: 2px dashed #2271b1;
+    visibility: visible !important;
+    background: #f0f6fc;
+}
+
+/* Color Picker Inputs */
+.bazarino-color-picker {
+    max-width: 200px;
+}
+
+/* Form Table Enhancements */
+.bazarino-admin-section .form-table th {
+    width: 200px;
+    padding: 20px 10px 20px 0;
+}
+
+.bazarino-admin-section .form-table td {
+    padding: 15px 10px;
+}
+
+.bazarino-admin-section .form-table label {
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+/* Checkbox Styling */
+.bazarino-admin-section input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/* Number Input Styling */
+.bazarino-admin-section input[type="number"] {
+    width: 80px;
+}
+
+/* Select Styling */
+.bazarino-admin-section select {
+    min-width: 200px;
+}
+
+/* Submit Button Styling */
+.bazarino-admin-section .button-primary {
+    padding: 8px 24px;
+    height: auto;
+    font-size: 14px;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .bazarino-admin-section .form-table th {
+        width: auto;
+    }
+    
+    .bazarino-sortable {
+        max-width: 100%;
+    }
+}
+
