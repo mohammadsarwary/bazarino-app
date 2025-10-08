@@ -13,6 +13,7 @@ class Bazarino_REST_API {
     
     private static $instance = null;
     private $config_manager;
+    private $notification_manager;
     private $namespace = 'bazarino/v1';
     
     public static function get_instance() {
@@ -24,6 +25,7 @@ class Bazarino_REST_API {
     
     private function __construct() {
         $this->config_manager = Bazarino_Config_Manager::get_instance();
+        $this->notification_manager = Bazarino_Notification_Manager::get_instance();
         add_action('rest_api_init', array($this, 'register_routes'));
     }
     
@@ -57,6 +59,92 @@ class Bazarino_REST_API {
                     'description' => 'Configuration object'
                 ),
             ),
+        ));
+        
+        // === Notification Endpoints ===
+        
+        // Save FCM token (from app)
+        register_rest_route($this->namespace, '/notifications/register-token', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'register_fcm_token'),
+            'permission_callback' => '__return_true',
+            'args' => array(
+                'device_id' => array(
+                    'required' => true,
+                    'type' => 'string',
+                    'description' => 'Unique device identifier'
+                ),
+                'fcm_token' => array(
+                    'required' => true,
+                    'type' => 'string',
+                    'description' => 'FCM registration token'
+                ),
+                'platform' => array(
+                    'required' => false,
+                    'type' => 'string',
+                    'default' => 'android',
+                    'description' => 'Platform (android/ios)'
+                ),
+                'app_version' => array(
+                    'required' => false,
+                    'type' => 'string',
+                    'description' => 'App version'
+                ),
+            ),
+        ));
+        
+        // Send push notification (Admin only)
+        register_rest_route($this->namespace, '/notifications/send', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'send_push_notification'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+            'args' => array(
+                'title' => array(
+                    'required' => true,
+                    'type' => 'string',
+                    'description' => 'Notification title'
+                ),
+                'body' => array(
+                    'required' => true,
+                    'type' => 'string',
+                    'description' => 'Notification body'
+                ),
+                'image_url' => array(
+                    'required' => false,
+                    'type' => 'string',
+                    'description' => 'Image URL'
+                ),
+                'data' => array(
+                    'required' => false,
+                    'type' => 'object',
+                    'description' => 'Additional data payload'
+                ),
+                'target_type' => array(
+                    'required' => false,
+                    'type' => 'string',
+                    'default' => 'all',
+                    'description' => 'Target type: all, users, platform'
+                ),
+                'platform' => array(
+                    'required' => false,
+                    'type' => 'string',
+                    'description' => 'Platform filter (android/ios)'
+                ),
+            ),
+        ));
+        
+        // Get notifications history (Admin only)
+        register_rest_route($this->namespace, '/notifications/history', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'get_notifications_history'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+        
+        // Get notification statistics (Admin only)
+        register_rest_route($this->namespace, '/notifications/stats', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'get_notification_stats'),
+            'permission_callback' => array($this, 'check_admin_permission'),
         ));
     }
     
@@ -155,6 +243,137 @@ class Bazarino_REST_API {
      */
     public function check_admin_permission() {
         return current_user_can('manage_options');
+    }
+    
+    // === Notification Endpoints Callbacks ===
+    
+    /**
+     * Register FCM token
+     * 
+     * POST /wp-json/bazarino/v1/notifications/register-token
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function register_fcm_token($request) {
+        $device_id = $request->get_param('device_id');
+        $fcm_token = $request->get_param('fcm_token');
+        $platform = $request->get_param('platform') ?: 'android';
+        $app_version = $request->get_param('app_version');
+        
+        // Get user ID if authenticated
+        $user_id = get_current_user_id();
+        if ($user_id === 0) {
+            $user_id = null;
+        }
+        
+        $result = $this->notification_manager->save_fcm_token(
+            $device_id,
+            $fcm_token,
+            $user_id,
+            $platform,
+            $app_version
+        );
+        
+        if ($result) {
+            return new WP_REST_Response(array(
+                'success' => true,
+                'message' => 'FCM token registered successfully'
+            ), 200);
+        } else {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => array(
+                    'code' => 'registration_failed',
+                    'message' => 'Failed to register FCM token'
+                )
+            ), 500);
+        }
+    }
+    
+    /**
+     * Send push notification
+     * 
+     * POST /wp-json/bazarino/v1/notifications/send
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function send_push_notification($request) {
+        $title = $request->get_param('title');
+        $body = $request->get_param('body');
+        $image_url = $request->get_param('image_url');
+        $data = $request->get_param('data');
+        $target_type = $request->get_param('target_type') ?: 'all';
+        $platform = $request->get_param('platform');
+        
+        $result = $this->notification_manager->send_notification(
+            $title,
+            $body,
+            $image_url,
+            $data,
+            $target_type,
+            null, // target_users
+            $platform
+        );
+        
+        if ($result['success']) {
+            return new WP_REST_Response(array(
+                'success' => true,
+                'message' => 'Notification sent successfully',
+                'data' => array(
+                    'sent' => $result['sent'],
+                    'failed' => $result['failed'],
+                    'total_tokens' => $result['total_tokens']
+                )
+            ), 200);
+        } else {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => array(
+                    'code' => 'send_failed',
+                    'message' => $result['error']
+                )
+            ), 500);
+        }
+    }
+    
+    /**
+     * Get notifications history
+     * 
+     * GET /wp-json/bazarino/v1/notifications/history
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function get_notifications_history($request) {
+        $limit = $request->get_param('limit') ?: 20;
+        $offset = $request->get_param('offset') ?: 0;
+        
+        $notifications = $this->notification_manager->get_notifications_history($limit, $offset);
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'data' => $notifications,
+            'count' => count($notifications)
+        ), 200);
+    }
+    
+    /**
+     * Get notification statistics
+     * 
+     * GET /wp-json/bazarino/v1/notifications/stats
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function get_notification_stats($request) {
+        $stats = $this->notification_manager->get_statistics();
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'data' => $stats
+        ), 200);
     }
 }
 

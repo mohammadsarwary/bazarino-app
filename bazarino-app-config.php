@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: Bazarino App Config
- * Plugin URI: https://bazarino.store
+ * Plugin URI: https://bazarino.com
  * Description: Custom configuration plugin for Bazarino Mobile App. Provides admin panel to configure app appearance, homepage layout, and custom settings.
  * Version: 1.0.0
  * Author: Bazarino Team
- * Author URI: https://bazarino.store
+ * Author URI: https://bazarino.com
  * Text Domain: bazarino-app-config
  * Domain Path: /languages
  * Requires at least: 5.8
@@ -57,6 +57,8 @@ class Bazarino_App_Config {
         require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-admin-panel.php';
         require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-rest-api.php';
         require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-config-manager.php';
+        require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-notification-manager.php';
+        require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-notification-admin.php';
     }
     
     /**
@@ -85,6 +87,7 @@ class Bazarino_App_Config {
         // Initialize admin panel
         if (is_admin()) {
             Bazarino_Admin_Panel::get_instance();
+            Bazarino_Notification_Admin::get_instance();
         }
         
         // Initialize REST API
@@ -92,6 +95,9 @@ class Bazarino_App_Config {
         
         // Initialize config manager
         Bazarino_Config_Manager::get_instance();
+        
+        // Initialize notification manager
+        Bazarino_Notification_Manager::get_instance();
     }
 }
 
@@ -137,6 +143,11 @@ function bazarino_app_config_activate() {
     );
     
     add_option('bazarino_homepage_config', $default_config);
+    
+    // Create notification tables
+    require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-notification-manager.php';
+    $notification_manager = Bazarino_Notification_Manager::get_instance();
+    $notification_manager->create_tables();
 }
 
 /**
