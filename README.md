@@ -333,6 +333,51 @@ WHERE option_name = 'bazarino_homepage_config';
 
 ---
 
+## 🔔 Push Notifications
+
+### امکانات نوتیفیکیشن
+
+- ✅ **Admin Panel** - ارسال نوتیف از داشبورد WordPress
+- ✅ **Firebase Cloud Messaging** - ارسال real-time به کاربران
+- ✅ **آمار دستگاه‌ها** - نمایش تعداد دستگاه‌های Android/iOS
+- ✅ **تاریخچه ارسال** - لیست نوتیف‌های ارسال شده
+- ✅ **Action Types** - باز کردن محصول، دسته‌بندی، URL
+- ✅ **Target Platform** - ارسال به همه، Android، یا iOS
+- ✅ **تصویر در نوتیف** - قابلیت اضافه کردن تصویر
+
+### نحوه استفاده
+
+1. **تنظیمات FCM:**
+   - برو به `App Config > Notification Settings`
+   - FCM Server Key از Firebase رو وارد کن
+   - Save Changes بزن
+
+2. **ارسال نوتیف:**
+   - برو به `App Config > Notifications`
+   - فرم رو پُر کن (عنوان، متن، تصویر، اکشن)
+   - Send Notification بزن
+
+3. **مشاهده آمار:**
+   - تعداد دستگاه‌های فعال
+   - تعداد نوتیف‌های ارسال شده
+   - نرخ موفقیت/شکست ارسال
+
+### API Endpoints
+
+```
+POST /wp-json/bazarino/v1/notifications/register-token
+POST /wp-json/bazarino/v1/notifications/send
+GET  /wp-json/bazarino/v1/notifications/history
+GET  /wp-json/bazarino/v1/notifications/stats
+```
+
+### مستندات
+
+- 📚 **راهنمای کامل**: `NOTIFICATION_QUICK_START.md`
+- 📚 **راهنمای جامع**: `docs/guides/NOTIFICATION_SYSTEM_GUIDE.md`
+
+---
+
 ## 🔄 Version History
 
 ### Version 1.0.0 (Initial Release)
@@ -343,6 +388,9 @@ WHERE option_name = 'bazarino_homepage_config';
 - ✅ Widget ordering
 - ✅ Slider settings
 - ✅ Categories settings
+- ✅ **Push Notifications System** 🆕
+- ✅ **FCM Integration** 🆕
+- ✅ **Notification History** 🆕
 
 ---
 

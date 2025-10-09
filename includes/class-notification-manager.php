@@ -156,7 +156,7 @@ class Bazarino_Notification_Manager {
     }
     
     /**
-     * Send push notification via FCM
+     * Send push notification via FCM HTTP v1
      * 
      * @param string $title Notification title
      * @param string $body Notification body
@@ -168,13 +168,13 @@ class Bazarino_Notification_Manager {
      * @return array Result with sent and failed counts
      */
     public function send_notification($title, $body, $image_url = null, $data = null, $target_type = 'all', $target_users = null, $platform = null) {
-        // Get FCM Server Key from options
-        $fcm_server_key = get_option('bazarino_fcm_server_key');
+        // Get OAuth2 Access Token
+        $access_token = $this->get_access_token();
         
-        if (empty($fcm_server_key)) {
+        if (empty($access_token)) {
             return array(
                 'success' => false,
-                'error' => 'FCM Server Key not configured',
+                'error' => 'FCM Service Account not configured or invalid',
                 'sent' => 0,
                 'failed' => 0
             );
@@ -210,30 +210,38 @@ class Bazarino_Notification_Manager {
         $sent_count = 0;
         $failed_count = 0;
         
-        // Send to tokens in batches (FCM allows max 1000 per request)
-        $token_chunks = array_chunk($tokens, 500);
-        
-        foreach ($token_chunks as $chunk) {
-            $fcm_tokens = array_map(function($item) {
-                return $item->fcm_token;
-            }, $chunk);
-            
+        // Send to each token individually (HTTP v1 format)
+        foreach ($tokens as $token_data) {
             $fcm_payload = array(
-                'registration_ids' => $fcm_tokens,
-                'notification' => $notification_data,
-                'data' => $extra_data,
-                'priority' => 'high',
-                'content_available' => true
+                'message' => array(
+                    'token' => $token_data->fcm_token,
+                    'notification' => $notification_data,
+                    'data' => $extra_data,
+                    'android' => array(
+                        'priority' => 'high',
+                        'notification' => array(
+                            'priority' => 'high',
+                            'default_sound' => true
+                        )
+                    ),
+                    'apns' => array(
+                        'payload' => array(
+                            'aps' => array(
+                                'content_available' => true,
+                                'sound' => 'default'
+                            )
+                        )
+                    )
+                )
             );
             
-            // Send via FCM
-            $response = $this->send_fcm_request($fcm_server_key, $fcm_payload);
+            // Send via FCM HTTP v1
+            $response = $this->send_fcm_request($access_token, $fcm_payload);
             
             if ($response['success']) {
                 $sent_count += $response['success_count'];
-                $failed_count += $response['failure_count'];
             } else {
-                $failed_count += count($fcm_tokens);
+                $failed_count += 1;
             }
         }
         
@@ -258,17 +266,17 @@ class Bazarino_Notification_Manager {
     }
     
     /**
-     * Send FCM HTTP request
+     * Send FCM HTTP v1 request
      * 
-     * @param string $server_key FCM Server Key
+     * @param string $access_token OAuth2 Access Token
      * @param array $payload FCM payload
      * @return array Response with success status
      */
-    private function send_fcm_request($server_key, $payload) {
-        $url = 'https://fcm.googleapis.com/fcm/send';
+    private function send_fcm_request($access_token, $payload) {
+        $url = 'https://fcm.googleapis.com/v1/projects/' . $this->get_project_id() . '/messages:send';
         
         $headers = array(
-            'Authorization: key=' . $server_key,
+            'Authorization: Bearer ' . $access_token,
             'Content-Type: application/json'
         );
         
@@ -289,8 +297,8 @@ class Bazarino_Notification_Manager {
             $response = json_decode($result, true);
             return array(
                 'success' => true,
-                'success_count' => isset($response['success']) ? $response['success'] : 0,
-                'failure_count' => isset($response['failure']) ? $response['failure'] : 0,
+                'success_count' => 1, // HTTP v1 returns single message
+                'failure_count' => 0,
                 'response' => $response
             );
         } else {
@@ -300,6 +308,95 @@ class Bazarino_Notification_Manager {
                 'response' => $result
             );
         }
+    }
+    
+    /**
+     * Get OAuth2 Access Token
+     * 
+     * @return string|false Access token or false on failure
+     */
+    private function get_access_token() {
+        $service_account = get_option('bazarino_fcm_service_account');
+        
+        if (empty($service_account)) {
+            return false;
+        }
+        
+        $service_account_data = json_decode($service_account, true);
+        
+        if (!$service_account_data) {
+            return false;
+        }
+        
+        $jwt_header = json_encode(array(
+            'alg' => 'RS256',
+            'typ' => 'JWT'
+        ));
+        
+        $now = time();
+        $jwt_payload = json_encode(array(
+            'iss' => $service_account_data['client_email'],
+            'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+            'aud' => 'https://oauth2.googleapis.com/token',
+            'iat' => $now,
+            'exp' => $now + 3600
+        ));
+        
+        $jwt_header_encoded = $this->base64url_encode($jwt_header);
+        $jwt_payload_encoded = $this->base64url_encode($jwt_payload);
+        
+        $jwt_signature = '';
+        $signing_input = $jwt_header_encoded . '.' . $jwt_payload_encoded;
+        
+        if (openssl_sign($signing_input, $jwt_signature, $service_account_data['private_key'], 'SHA256')) {
+            $jwt_signature_encoded = $this->base64url_encode($jwt_signature);
+            $jwt = $signing_input . '.' . $jwt_signature_encoded;
+            
+            // Exchange JWT for access token
+            $token_url = 'https://oauth2.googleapis.com/token';
+            $token_data = array(
+                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                'assertion' => $jwt
+            );
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $token_url);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($token_data));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            
+            $token_result = curl_exec($ch);
+            $token_http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($token_http_code == 200) {
+                $token_response = json_decode($token_result, true);
+                return isset($token_response['access_token']) ? $token_response['access_token'] : false;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Base64 URL encode
+     */
+    private function base64url_encode($data) {
+        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+    }
+    
+    /**
+     * Get Firebase Project ID
+     */
+    private function get_project_id() {
+        $service_account = get_option('bazarino_fcm_service_account');
+        if (empty($service_account)) {
+            return '';
+        }
+        
+        $service_account_data = json_decode($service_account, true);
+        return isset($service_account_data['project_id']) ? $service_account_data['project_id'] : '';
     }
     
     /**

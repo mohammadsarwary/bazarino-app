@@ -57,7 +57,7 @@ class Bazarino_Notification_Admin {
      * Register notification settings
      */
     public function register_notification_settings() {
-        register_setting('bazarino_notification_settings', 'bazarino_fcm_server_key');
+        register_setting('bazarino_notification_settings', 'bazarino_fcm_service_account');
     }
     
     /**
@@ -338,22 +338,21 @@ class Bazarino_Notification_Admin {
                 <?php settings_fields('bazarino_notification_settings'); ?>
                 
                 <div class="bazarino-admin-section" style="background: #fff; padding: 20px; margin: 20px 0; border-radius: 5px;">
-                    <h2><?php _e('Firebase Cloud Messaging (FCM)', 'bazarino-app-config'); ?></h2>
+                    <h2><?php _e('Firebase Cloud Messaging (FCM) HTTP v1', 'bazarino-app-config'); ?></h2>
                     
                     <table class="form-table">
                         <tr>
                             <th scope="row">
-                                <label for="bazarino_fcm_server_key"><?php _e('FCM Server Key', 'bazarino-app-config'); ?></label>
+                                <label for="bazarino_fcm_service_account"><?php _e('Service Account JSON', 'bazarino-app-config'); ?></label>
                             </th>
                             <td>
-                                <input type="text" 
-                                       id="bazarino_fcm_server_key"
-                                       name="bazarino_fcm_server_key" 
-                                       value="<?php echo esc_attr(get_option('bazarino_fcm_server_key')); ?>" 
-                                       class="large-text" 
-                                       placeholder="<?php esc_attr_e('Your FCM Server Key', 'bazarino-app-config'); ?>" />
+                                <textarea id="bazarino_fcm_service_account"
+                                          name="bazarino_fcm_service_account" 
+                                          rows="10" 
+                                          class="large-text code" 
+                                          placeholder="<?php esc_attr_e('Paste your Service Account JSON here', 'bazarino-app-config'); ?>"><?php echo esc_textarea(get_option('bazarino_fcm_service_account')); ?></textarea>
                                 <p class="description">
-                                    <?php _e('Get your FCM Server Key from Firebase Console > Project Settings > Cloud Messaging', 'bazarino-app-config'); ?>
+                                    <?php _e('Get your Service Account JSON from Firebase Console > Project Settings > Service Accounts', 'bazarino-app-config'); ?>
                                     <br>
                                     <a href="https://console.firebase.google.com/" target="_blank"><?php _e('Open Firebase Console', 'bazarino-app-config'); ?></a>
                                 </p>
@@ -362,14 +361,22 @@ class Bazarino_Notification_Admin {
                     </table>
                     
                     <div class="bazarino-info-box" style="background: #e7f5fe; border-left: 4px solid #0073aa; padding: 15px; margin-top: 20px;">
-                        <h3 style="margin-top: 0;"><?php _e('How to get FCM Server Key:', 'bazarino-app-config'); ?></h3>
+                        <h3 style="margin-top: 0;"><?php _e('How to get Service Account JSON:', 'bazarino-app-config'); ?></h3>
                         <ol style="margin: 10px 0 0 20px;">
                             <li><?php _e('Go to Firebase Console', 'bazarino-app-config'); ?></li>
                             <li><?php _e('Select your project', 'bazarino-app-config'); ?></li>
                             <li><?php _e('Click on Settings (gear icon) > Project Settings', 'bazarino-app-config'); ?></li>
-                            <li><?php _e('Go to "Cloud Messaging" tab', 'bazarino-app-config'); ?></li>
-                            <li><?php _e('Copy the "Server key" and paste it here', 'bazarino-app-config'); ?></li>
+                            <li><?php _e('Go to "Service accounts" tab', 'bazarino-app-config'); ?></li>
+                            <li><?php _e('Click "Generate new private key"', 'bazarino-app-config'); ?></li>
+                            <li><?php _e('Download the JSON file and paste its content here', 'bazarino-app-config'); ?></li>
                         </ol>
+                    </div>
+                    
+                    <div class="bazarino-warning-box" style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-top: 20px;">
+                        <h3 style="margin-top: 0;"><?php _e('Important Security Note:', 'bazarino-app-config'); ?></h3>
+                        <p style="margin: 10px 0 0 0;">
+                            <?php _e('The Service Account JSON contains sensitive information. Make sure your WordPress site is secure and only authorized users can access this admin panel.', 'bazarino-app-config'); ?>
+                        </p>
                     </div>
                 </div>
                 
