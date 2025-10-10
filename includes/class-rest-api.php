@@ -153,6 +153,13 @@ class Bazarino_REST_API {
             'callback' => array($this, 'debug_notifications'),
             'permission_callback' => '__return_true',
         ));
+        
+        // Create tables endpoint
+        register_rest_route($this->namespace, '/notifications/create-tables', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'create_notification_tables'),
+            'permission_callback' => '__return_true',
+        ));
     }
     
     /**
@@ -432,6 +439,38 @@ class Bazarino_REST_API {
             'success' => true,
             'debug_info' => $debug_info
         ), 200);
+    }
+    
+    /**
+     * Create notification tables
+     * 
+     * POST /wp-json/bazarino/v1/notifications/create-tables
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function create_notification_tables($request) {
+        try {
+            $notification_manager = Bazarino_Notification_Manager::get_instance();
+            $result = $notification_manager->create_tables();
+            
+            if ($result) {
+                return new WP_REST_Response(array(
+                    'success' => true,
+                    'message' => 'Notification tables created successfully'
+                ), 200);
+            } else {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to create tables'
+                ), 500);
+            }
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => $e->getMessage()
+            ), 500);
+        }
     }
 }
 
