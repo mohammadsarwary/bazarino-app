@@ -160,6 +160,13 @@ class Bazarino_REST_API {
             'callback' => array($this, 'create_notification_tables'),
             'permission_callback' => '__return_true',
         ));
+        
+        // Test FCM endpoint
+        register_rest_route($this->namespace, '/notifications/test-fcm', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'test_fcm_send'),
+            'permission_callback' => '__return_true',
+        ));
     }
     
     /**
@@ -401,8 +408,42 @@ class Bazarino_REST_API {
     public function debug_notifications($request) {
         global $wpdb;
         
+        // Check plugin active status with multiple possible paths
+        $plugin_paths = array(
+            'bazarino-admin-plugin/bazarino-app-config.php',
+            'bazarino-app-config.php',
+            'bazarino-admin-plugin/bazarino-app-config.php'
+        );
+        
+        $plugin_active = false;
+        $active_plugin_path = null;
+        foreach ($plugin_paths as $path) {
+            if (is_plugin_active($path)) {
+                $plugin_active = true;
+                $active_plugin_path = $path;
+                break;
+            }
+        }
+        
+        // Also check if our classes exist (this is more reliable)
+        $classes_exist = class_exists('Bazarino_Notification_Manager') && 
+                      class_exists('Bazarino_Notification_Admin') &&
+                      class_exists('Bazarino_REST_API');
+        
+        // Check if our REST API endpoints are registered
+        $rest_routes_exist = false;
+        if (function_exists('rest_get_server')) {
+            $server = rest_get_server();
+            $routes = $server->get_routes();
+            $rest_routes_exist = isset($routes['/bazarino/v1/notifications/debug']);
+        }
+        
         $debug_info = array(
-            'plugin_active' => is_plugin_active('bazarino-admin-plugin/bazarino-app-config.php'),
+            'plugin_active' => $plugin_active || $classes_exist || $rest_routes_exist,
+            'plugin_paths_checked' => $plugin_paths,
+            'active_plugin_path' => $active_plugin_path,
+            'classes_exist' => $classes_exist,
+            'rest_routes_exist' => $rest_routes_exist,
             'notification_manager_exists' => class_exists('Bazarino_Notification_Manager'),
             'tables_exist' => array(),
             'php_version' => PHP_VERSION,
@@ -469,6 +510,88 @@ class Bazarino_REST_API {
             return new WP_REST_Response(array(
                 'success' => false,
                 'error' => $e->getMessage()
+            ), 500);
+        }
+    }
+    
+    /**
+     * Test FCM send
+     * 
+     * POST /wp-json/bazarino/v1/notifications/test-fcm
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function test_fcm_send($request) {
+        try {
+            $notification_manager = Bazarino_Notification_Manager::get_instance();
+            
+            // Get test data
+            $title = $request->get_param('title') ?: 'Test Notification';
+            $body = $request->get_param('body') ?: 'This is a test notification';
+            $fcm_token = $request->get_param('fcm_token');
+            
+            if (empty($fcm_token)) {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'FCM token is required'
+                ), 400);
+            }
+            
+            // Test access token
+            $access_token = $notification_manager->get_access_token();
+            
+            if (empty($access_token)) {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'FCM Service Account not configured or invalid',
+                    'debug' => array(
+                        'service_account_exists' => !empty(get_option('bazarino_fcm_service_account')),
+                        'project_id' => $notification_manager->get_project_id()
+                    )
+                ), 400);
+            }
+            
+            // Test FCM request
+            $fcm_payload = array(
+                'message' => array(
+                    'token' => $fcm_token,
+                    'notification' => array(
+                        'title' => $title,
+                        'body' => $body
+                    ),
+                    'data' => array(
+                        'test' => 'true',
+                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
+                    ),
+                    'android' => array(
+                        'priority' => 'high',
+                        'notification' => array(
+                            'priority' => 'high',
+                            'default_sound' => true
+                        )
+                    )
+                )
+            );
+            
+            // Send FCM request
+            $response = $notification_manager->send_fcm_request($access_token, $fcm_payload);
+            
+            return new WP_REST_Response(array(
+                'success' => $response['success'],
+                'message' => $response['success'] ? 'FCM test successful' : 'FCM test failed',
+                'debug' => array(
+                    'access_token_length' => strlen($access_token),
+                    'project_id' => $notification_manager->get_project_id(),
+                    'fcm_response' => $response
+                )
+            ), $response['success'] ? 200 : 500);
+            
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ), 500);
         }
     }

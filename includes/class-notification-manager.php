@@ -72,8 +72,15 @@ class Bazarino_Notification_Manager {
         ) $charset_collate;";
         
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        dbDelta($sql_tokens);
-        dbDelta($sql_notifications);
+        
+        $result_tokens = dbDelta($sql_tokens);
+        $result_notifications = dbDelta($sql_notifications);
+        
+        // Check if tables were created successfully
+        $tokens_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->fcm_table_name}'") == $this->fcm_table_name;
+        $notifications_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->notifications_table_name}'") == $this->notifications_table_name;
+        
+        return $tokens_exists && $notifications_exists;
     }
     
     /**
@@ -272,7 +279,7 @@ class Bazarino_Notification_Manager {
      * @param array $payload FCM payload
      * @return array Response with success status
      */
-    private function send_fcm_request($access_token, $payload) {
+    public function send_fcm_request($access_token, $payload) {
         $url = 'https://fcm.googleapis.com/v1/projects/' . $this->get_project_id() . '/messages:send';
         
         $headers = array(
@@ -315,7 +322,7 @@ class Bazarino_Notification_Manager {
      * 
      * @return string|false Access token or false on failure
      */
-    private function get_access_token() {
+    public function get_access_token() {
         $service_account = get_option('bazarino_fcm_service_account');
         
         if (empty($service_account)) {
