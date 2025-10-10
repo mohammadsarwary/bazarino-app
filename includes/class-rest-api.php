@@ -146,6 +146,13 @@ class Bazarino_REST_API {
             'callback' => array($this, 'get_notification_stats'),
             'permission_callback' => array($this, 'check_admin_permission'),
         ));
+        
+        // Debug endpoint
+        register_rest_route($this->namespace, '/notifications/debug', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'debug_notifications'),
+            'permission_callback' => '__return_true',
+        ));
     }
     
     /**
@@ -373,6 +380,57 @@ class Bazarino_REST_API {
         return new WP_REST_Response(array(
             'success' => true,
             'data' => $stats
+        ), 200);
+    }
+    
+    /**
+     * Debug notifications system
+     * 
+     * GET /wp-json/bazarino/v1/notifications/debug
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function debug_notifications($request) {
+        global $wpdb;
+        
+        $debug_info = array(
+            'plugin_active' => is_plugin_active('bazarino-admin-plugin/bazarino-app-config.php'),
+            'notification_manager_exists' => class_exists('Bazarino_Notification_Manager'),
+            'tables_exist' => array(),
+            'php_version' => PHP_VERSION,
+            'wp_version' => get_bloginfo('version'),
+            'error_log' => array()
+        );
+        
+        // Check if tables exist
+        $fcm_table = $wpdb->prefix . 'bazarino_fcm_tokens';
+        $notifications_table = $wpdb->prefix . 'bazarino_notifications';
+        
+        $debug_info['tables_exist']['fcm_tokens'] = $wpdb->get_var("SHOW TABLES LIKE '$fcm_table'") == $fcm_table;
+        $debug_info['tables_exist']['notifications'] = $wpdb->get_var("SHOW TABLES LIKE '$notifications_table'") == $notifications_table;
+        
+        // Test database connection
+        try {
+            $test_result = $wpdb->get_var("SELECT 1");
+            $debug_info['database_connection'] = $test_result == 1;
+        } catch (Exception $e) {
+            $debug_info['database_connection'] = false;
+            $debug_info['database_error'] = $e->getMessage();
+        }
+        
+        // Test notification manager
+        try {
+            $notification_manager = Bazarino_Notification_Manager::get_instance();
+            $debug_info['notification_manager_instance'] = true;
+        } catch (Exception $e) {
+            $debug_info['notification_manager_instance'] = false;
+            $debug_info['notification_manager_error'] = $e->getMessage();
+        }
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'debug_info' => $debug_info
         ), 200);
     }
 }
