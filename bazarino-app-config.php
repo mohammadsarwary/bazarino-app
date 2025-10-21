@@ -59,6 +59,9 @@ class Bazarino_App_Config {
         require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-config-manager.php';
         require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-notification-manager.php';
         require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-notification-admin.php';
+        require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-database-schema.php';
+        require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-app-builder-api.php';
+        require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-app-builder-admin.php';
     }
     
     /**
@@ -88,16 +91,23 @@ class Bazarino_App_Config {
         if (is_admin()) {
             Bazarino_Admin_Panel::get_instance();
             Bazarino_Notification_Admin::get_instance();
+            Bazarino_App_Builder_Admin::get_instance();
         }
         
         // Initialize REST API
         Bazarino_REST_API::get_instance();
+        
+        // Initialize App Builder API
+        Bazarino_App_Builder_API::get_instance();
         
         // Initialize config manager
         Bazarino_Config_Manager::get_instance();
         
         // Initialize notification manager
         Bazarino_Notification_Manager::get_instance();
+        
+        // Initialize database schema
+        Bazarino_Database_Schema::get_instance();
     }
 }
 
@@ -148,6 +158,12 @@ function bazarino_app_config_activate() {
     require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-notification-manager.php';
     $notification_manager = Bazarino_Notification_Manager::get_instance();
     $notification_manager->create_tables();
+    
+    // Create App Builder tables
+    require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-database-schema.php';
+    $database_schema = Bazarino_Database_Schema::get_instance();
+    $database_schema->create_tables();
+    $database_schema->insert_default_data();
 }
 
 /**

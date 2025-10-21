@@ -225,16 +225,15 @@ class Bazarino_Notification_Manager {
                     'notification' => $notification_data,
                     'data' => $extra_data,
                     'android' => array(
-                        'priority' => 'high',
-                        'notification' => array(
-                            'priority' => 'high',
-                            'default_sound' => true
-                        )
+                        'priority' => 'high'
                     ),
                     'apns' => array(
+                        'headers' => array(
+                            'apns-priority' => '10'
+                        ),
                         'payload' => array(
                             'aps' => array(
-                                'content_available' => true,
+                                'content-available' => 1,
                                 'sound' => 'default'
                             )
                         )
@@ -280,7 +279,11 @@ class Bazarino_Notification_Manager {
      * @return array Response with success status
      */
     public function send_fcm_request($access_token, $payload) {
-        $url = 'https://fcm.googleapis.com/v1/projects/' . $this->get_project_id() . '/messages:send';
+        $project_id = $this->get_project_id();
+        $url = 'https://fcm.googleapis.com/v1/projects/' . $project_id . '/messages:send';
+        
+        error_log('[FCM] Sending FCM request to: ' . $url);
+        error_log('[FCM] Payload: ' . json_encode($payload));
         
         $headers = array(
             'Authorization: Bearer ' . $access_token,
@@ -297,11 +300,20 @@ class Bazarino_Notification_Manager {
         
         $result = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
         
         curl_close($ch);
         
+        error_log('[FCM] FCM Response HTTP Code: ' . $http_code);
+        error_log('[FCM] FCM Response Body: ' . $result);
+        
+        if ($curl_error) {
+            error_log('[FCM] CURL Error: ' . $curl_error);
+        }
+        
         if ($http_code == 200) {
             $response = json_decode($result, true);
+            error_log('[FCM] FCM request successful');
             return array(
                 'success' => true,
                 'success_count' => 1, // HTTP v1 returns single message
@@ -309,10 +321,12 @@ class Bazarino_Notification_Manager {
                 'response' => $response
             );
         } else {
+            error_log('[FCM] FCM request failed with code: ' . $http_code);
             return array(
                 'success' => false,
                 'error' => 'FCM request failed with code: ' . $http_code,
-                'response' => $result
+                'response' => $result,
+                'http_code' => $http_code
             );
         }
     }
@@ -326,12 +340,24 @@ class Bazarino_Notification_Manager {
         $service_account = get_option('bazarino_fcm_service_account');
         
         if (empty($service_account)) {
+            error_log('[FCM] Service account is empty');
             return false;
         }
         
         $service_account_data = json_decode($service_account, true);
         
         if (!$service_account_data) {
+            error_log('[FCM] Failed to decode service account JSON: ' . json_last_error_msg());
+            return false;
+        }
+        
+        if (!isset($service_account_data['client_email'])) {
+            error_log('[FCM] client_email not found in service account');
+            return false;
+        }
+        
+        if (!isset($service_account_data['private_key'])) {
+            error_log('[FCM] private_key not found in service account');
             return false;
         }
         
@@ -355,35 +381,56 @@ class Bazarino_Notification_Manager {
         $jwt_signature = '';
         $signing_input = $jwt_header_encoded . '.' . $jwt_payload_encoded;
         
-        if (openssl_sign($signing_input, $jwt_signature, $service_account_data['private_key'], 'SHA256')) {
-            $jwt_signature_encoded = $this->base64url_encode($jwt_signature);
-            $jwt = $signing_input . '.' . $jwt_signature_encoded;
-            
-            // Exchange JWT for access token
-            $token_url = 'https://oauth2.googleapis.com/token';
-            $token_data = array(
-                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                'assertion' => $jwt
-            );
-            
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $token_url);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($token_data));
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            
-            $token_result = curl_exec($ch);
-            $token_http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            if ($token_http_code == 200) {
-                $token_response = json_decode($token_result, true);
-                return isset($token_response['access_token']) ? $token_response['access_token'] : false;
-            }
+        // Try to sign with private key
+        $sign_result = openssl_sign($signing_input, $jwt_signature, $service_account_data['private_key'], 'SHA256');
+        
+        if (!$sign_result) {
+            $openssl_error = openssl_error_string();
+            error_log('[FCM] OpenSSL sign failed: ' . $openssl_error);
+            return false;
         }
         
-        return false;
+        $jwt_signature_encoded = $this->base64url_encode($jwt_signature);
+        $jwt = $signing_input . '.' . $jwt_signature_encoded;
+        
+        // Exchange JWT for access token
+        $token_url = 'https://oauth2.googleapis.com/token';
+        $token_data = array(
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            'assertion' => $jwt
+        );
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $token_url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($token_data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        
+        $token_result = curl_exec($ch);
+        $token_http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
+        curl_close($ch);
+        
+        if ($token_http_code != 200) {
+            error_log('[FCM] Token exchange failed. HTTP Code: ' . $token_http_code);
+            error_log('[FCM] Response: ' . $token_result);
+            if ($curl_error) {
+                error_log('[FCM] CURL Error: ' . $curl_error);
+            }
+            return false;
+        }
+        
+        $token_response = json_decode($token_result, true);
+        
+        if (!isset($token_response['access_token'])) {
+            error_log('[FCM] access_token not found in response');
+            error_log('[FCM] Response: ' . $token_result);
+            return false;
+        }
+        
+        error_log('[FCM] Access token obtained successfully');
+        return $token_response['access_token'];
     }
     
     /**
@@ -396,7 +443,7 @@ class Bazarino_Notification_Manager {
     /**
      * Get Firebase Project ID
      */
-    private function get_project_id() {
+    public function get_project_id() {
         $service_account = get_option('bazarino_fcm_service_account');
         if (empty($service_account)) {
             return '';

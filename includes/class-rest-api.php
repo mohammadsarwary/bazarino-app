@@ -167,6 +167,76 @@ class Bazarino_REST_API {
             'callback' => array($this, 'test_fcm_send'),
             'permission_callback' => '__return_true',
         ));
+        
+        // Simple FCM debug endpoint
+        register_rest_route($this->namespace, '/notifications/fcm-debug', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'fcm_debug'),
+            'permission_callback' => '__return_true',
+        ));
+        
+        // Super simple test endpoint
+        register_rest_route($this->namespace, '/notifications/simple-test', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'simple_test'),
+            'permission_callback' => '__return_true',
+        ));
+        
+        // Ultra simple FCM test endpoint
+        register_rest_route($this->namespace, '/notifications/ultra-simple-fcm', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'ultra_simple_fcm'),
+            'permission_callback' => '__return_true',
+        ));
+        
+        // Super simple FCM test endpoint
+        register_rest_route($this->namespace, '/notifications/super-simple-fcm', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'super_simple_fcm'),
+            'permission_callback' => '__return_true',
+        ));
+        
+        // Mega simple FCM test endpoint
+        register_rest_route($this->namespace, '/notifications/mega-simple-fcm', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'mega_simple_fcm'),
+            'permission_callback' => '__return_true',
+        ));
+        
+        // Step by step FCM test endpoint
+        register_rest_route($this->namespace, '/notifications/step-fcm', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'step_fcm_test'),
+            'permission_callback' => '__return_true',
+        ));
+        
+        // Ultra simple class test endpoint
+        register_rest_route($this->namespace, '/notifications/class-test', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'class_test'),
+            'permission_callback' => '__return_true',
+        ));
+        
+        // Method test endpoint
+        register_rest_route($this->namespace, '/notifications/method-test', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'method_test'),
+            'permission_callback' => '__return_true',
+        ));
+        
+        // Ultra simple method test endpoint
+        register_rest_route($this->namespace, '/notifications/ultra-method-test', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'ultra_method_test'),
+            'permission_callback' => '__return_true',
+        ));
+        
+        // Final method test endpoint
+        register_rest_route($this->namespace, '/notifications/final-method-test', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'final_method_test'),
+            'permission_callback' => '__return_true',
+        ));
     }
     
     /**
@@ -524,8 +594,6 @@ class Bazarino_REST_API {
      */
     public function test_fcm_send($request) {
         try {
-            $notification_manager = Bazarino_Notification_Manager::get_instance();
-            
             // Get test data
             $title = $request->get_param('title') ?: 'Test Notification';
             $body = $request->get_param('body') ?: 'This is a test notification';
@@ -538,21 +606,44 @@ class Bazarino_REST_API {
                 ), 400);
             }
             
-            // Test access token
-            $access_token = $notification_manager->get_access_token();
+            // Step 1: Get notification manager
+            $notification_manager = Bazarino_Notification_Manager::get_instance();
+            
+            // Step 2: Test get_project_id first
+            $project_id = null;
+            try {
+                $project_id = $notification_manager->get_project_id();
+            } catch (Exception $e) {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to get project ID: ' . $e->getMessage(),
+                    'step' => 'get_project_id'
+                ), 500);
+            }
+            
+            // Step 3: Test get_access_token
+            $access_token = null;
+            try {
+                $access_token = $notification_manager->get_access_token();
+            } catch (Exception $e) {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to get access token: ' . $e->getMessage(),
+                    'step' => 'get_access_token',
+                    'project_id' => $project_id
+                ), 500);
+            }
             
             if (empty($access_token)) {
                 return new WP_REST_Response(array(
                     'success' => false,
                     'error' => 'FCM Service Account not configured or invalid',
-                    'debug' => array(
-                        'service_account_exists' => !empty(get_option('bazarino_fcm_service_account')),
-                        'project_id' => $notification_manager->get_project_id()
-                    )
+                    'step' => 'access_token_empty',
+                    'project_id' => $project_id
                 ), 400);
             }
             
-            // Test FCM request
+            // Step 4: Prepare FCM payload
             $fcm_payload = array(
                 'message' => array(
                     'token' => $fcm_token,
@@ -565,32 +656,615 @@ class Bazarino_REST_API {
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
                     ),
                     'android' => array(
-                        'priority' => 'high',
-                        'notification' => array(
-                            'priority' => 'high',
-                            'default_sound' => true
+                        'priority' => 'high'
+                    ),
+                    'apns' => array(
+                        'headers' => array(
+                            'apns-priority' => '10'
+                        ),
+                        'payload' => array(
+                            'aps' => array(
+                                'content-available' => 1,
+                                'sound' => 'default'
+                            )
                         )
                     )
                 )
             );
             
-            // Send FCM request
-            $response = $notification_manager->send_fcm_request($access_token, $fcm_payload);
+            // Step 5: Send FCM request
+            $response = null;
+            try {
+                error_log('[FCM Test] Calling send_fcm_request...');
+                $response = $notification_manager->send_fcm_request($access_token, $fcm_payload);
+                error_log('[FCM Test] send_fcm_request returned: ' . json_encode($response));
+            } catch (Exception $e) {
+                error_log('[FCM Test] Exception in send_fcm_request: ' . $e->getMessage());
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to send FCM request: ' . $e->getMessage(),
+                    'step' => 'send_fcm_request',
+                    'project_id' => $project_id,
+                    'access_token_length' => strlen($access_token)
+                ), 500);
+            }
             
+            error_log('[FCM Test] Preparing response...');
             return new WP_REST_Response(array(
                 'success' => $response['success'],
-                'message' => $response['success'] ? 'FCM test successful' : 'FCM test failed',
+                'message' => $response['success'] ? 'FCM notification sent successfully' : 'FCM notification failed',
                 'debug' => array(
                     'access_token_length' => strlen($access_token),
-                    'project_id' => $notification_manager->get_project_id(),
+                    'project_id' => $project_id,
                     'fcm_response' => $response
                 )
             ), $response['success'] ? 200 : 500);
             
         } catch (Exception $e) {
+            error_log('[FCM Test] Top level exception: ' . $e->getMessage());
             return new WP_REST_Response(array(
                 'success' => false,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ), 500);
+        }
+    }
+    
+    /**
+     * FCM Debug
+     * 
+     * GET /wp-json/bazarino/v1/notifications/fcm-debug
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function fcm_debug($request) {
+        try {
+            $debug_info = array(
+                'service_account_exists' => !empty(get_option('bazarino_fcm_service_account')),
+                'service_account_length' => strlen(get_option('bazarino_fcm_service_account')),
+                'notification_manager_exists' => class_exists('Bazarino_Notification_Manager'),
+            );
+            
+            // Try to get notification manager instance
+            try {
+                $notification_manager = Bazarino_Notification_Manager::get_instance();
+                $debug_info['notification_manager_instance'] = true;
+                
+                // Try to get project ID (simplified)
+                $debug_info['project_id'] = 'checking...';
+                
+                // Try to get access token (simplified)
+                $debug_info['access_token_exists'] = false;
+                $debug_info['access_token_length'] = 0;
+                
+            } catch (Exception $e) {
+                $debug_info['notification_manager_error'] = $e->getMessage();
+            }
+            
+            return new WP_REST_Response(array(
+                'success' => true,
+                'debug_info' => $debug_info
+            ), 200);
+            
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ), 500);
+        }
+    }
+    
+    /**
+     * Simple Test
+     * 
+     * GET /wp-json/bazarino/v1/notifications/simple-test
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function simple_test($request) {
+        return new WP_REST_Response(array(
+            'success' => true,
+            'message' => 'Simple test endpoint working',
+            'timestamp' => current_time('mysql')
+        ), 200);
+    }
+    
+    /**
+     * Ultra Simple FCM Test
+     * 
+     * POST /wp-json/bazarino/v1/notifications/ultra-simple-fcm
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function ultra_simple_fcm($request) {
+        try {
+            // Get basic data
+            $title = $request->get_param('title') ?: 'Test Notification';
+            $body = $request->get_param('body') ?: 'This is a test notification';
+            $fcm_token = $request->get_param('fcm_token');
+            
+            // Basic response
+            $response = array(
+                'success' => true,
+                'message' => 'Ultra simple FCM test working',
+                'data' => array(
+                    'title' => $title,
+                    'body' => $body,
+                    'fcm_token_length' => strlen($fcm_token),
+                    'service_account_exists' => !empty(get_option('bazarino_fcm_service_account')),
+                    'timestamp' => current_time('mysql')
+                )
+            );
+            
+            return new WP_REST_Response($response, 200);
+            
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ), 500);
+        }
+    }
+    
+    /**
+     * Super Simple FCM Test
+     * 
+     * POST /wp-json/bazarino/v1/notifications/super-simple-fcm
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function super_simple_fcm($request) {
+        // Get basic data
+        $title = $request->get_param('title') ?: 'Test Notification';
+        $body = $request->get_param('body') ?: 'This is a test notification';
+        $fcm_token = $request->get_param('fcm_token');
+        
+        // Super simple response
+        $response = array(
+            'success' => true,
+            'message' => 'Super simple FCM test working',
+            'data' => array(
+                'title' => $title,
+                'body' => $body,
+                'fcm_token_length' => strlen($fcm_token),
+                'service_account_exists' => !empty(get_option('bazarino_fcm_service_account')),
+                'timestamp' => current_time('mysql')
+            )
+        );
+        
+        return new WP_REST_Response($response, 200);
+    }
+    
+    /**
+     * Mega Simple FCM Test
+     * 
+     * POST /wp-json/bazarino/v1/notifications/mega-simple-fcm
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function mega_simple_fcm($request) {
+        // Get basic data
+        $title = $request->get_param('title') ?: 'Test Notification';
+        $body = $request->get_param('body') ?: 'This is a test notification';
+        $fcm_token = $request->get_param('fcm_token');
+        
+        // Mega simple response
+        $response = array(
+            'success' => true,
+            'message' => 'Mega simple FCM test working',
+            'data' => array(
+                'title' => $title,
+                'body' => $body,
+                'fcm_token_length' => strlen($fcm_token),
+                'service_account_exists' => !empty(get_option('bazarino_fcm_service_account')),
+                'timestamp' => current_time('mysql')
+            )
+        );
+        
+        return new WP_REST_Response($response, 200);
+    }
+    
+    /**
+     * Step by Step FCM Test
+     * 
+     * POST /wp-json/bazarino/v1/notifications/step-fcm
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function step_fcm_test($request) {
+        $steps = array();
+        
+        try {
+            // Step 1: Check if notification manager exists
+            $steps['step1_class_exists'] = class_exists('Bazarino_Notification_Manager');
+            
+            if (!$steps['step1_class_exists']) {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Bazarino_Notification_Manager class not found',
+                    'steps' => $steps
+                ), 500);
+            }
+            
+            // Step 2: Try to get instance
+            try {
+                $notification_manager = Bazarino_Notification_Manager::get_instance();
+                $steps['step2_get_instance'] = true;
+            } catch (Exception $e) {
+                $steps['step2_get_instance'] = false;
+                $steps['step2_error'] = $e->getMessage();
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to get notification manager instance: ' . $e->getMessage(),
+                    'steps' => $steps
+                ), 500);
+            }
+            
+            // Step 3: Check service account
+            $service_account = get_option('bazarino_fcm_service_account');
+            $steps['step3_service_account_exists'] = !empty($service_account);
+            $steps['step3_service_account_length'] = strlen($service_account);
+            
+            if (empty($service_account)) {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Service Account not configured',
+                    'steps' => $steps
+                ), 400);
+            }
+            
+            // Step 4: Try to get project ID
+            try {
+                $project_id = $notification_manager->get_project_id();
+                $steps['step4_get_project_id'] = true;
+                $steps['step4_project_id'] = $project_id;
+            } catch (Exception $e) {
+                $steps['step4_get_project_id'] = false;
+                $steps['step4_error'] = $e->getMessage();
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to get project ID: ' . $e->getMessage(),
+                    'steps' => $steps
+                ), 500);
+            }
+            
+            // Step 5: Try to get access token
+            try {
+                $access_token = $notification_manager->get_access_token();
+                $steps['step5_get_access_token'] = !empty($access_token);
+                $steps['step5_access_token_length'] = strlen($access_token);
+            } catch (Exception $e) {
+                $steps['step5_get_access_token'] = false;
+                $steps['step5_error'] = $e->getMessage();
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to get access token: ' . $e->getMessage(),
+                    'steps' => $steps
+                ), 500);
+            }
+            
+            if (empty($access_token)) {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Access token is empty',
+                    'steps' => $steps
+                ), 400);
+            }
+            
+            // All steps passed
+            return new WP_REST_Response(array(
+                'success' => true,
+                'message' => 'All FCM steps passed successfully',
+                'steps' => $steps
+            ), 200);
+            
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => $e->getMessage(),
+                'steps' => $steps,
+                'trace' => $e->getTraceAsString()
+            ), 500);
+        }
+    }
+    
+    /**
+     * Ultra Simple Class Test
+     * 
+     * GET /wp-json/bazarino/v1/notifications/class-test
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function class_test($request) {
+        $test_results = array();
+        
+        try {
+            // Test 1: Check if class exists
+            $test_results['class_exists'] = class_exists('Bazarino_Notification_Manager');
+            
+            // Test 2: Check if methods exist
+            $test_results['get_instance_exists'] = method_exists('Bazarino_Notification_Manager', 'get_instance');
+            $test_results['get_project_id_exists'] = method_exists('Bazarino_Notification_Manager', 'get_project_id');
+            $test_results['get_access_token_exists'] = method_exists('Bazarino_Notification_Manager', 'get_access_token');
+            $test_results['send_fcm_request_exists'] = method_exists('Bazarino_Notification_Manager', 'send_fcm_request');
+            
+            // Test 3: Check service account
+            $service_account = get_option('bazarino_fcm_service_account');
+            $test_results['service_account_exists'] = !empty($service_account);
+            $test_results['service_account_length'] = strlen($service_account);
+            
+            // Test 4: Try to parse service account JSON
+            if (!empty($service_account)) {
+                $json_data = json_decode($service_account, true);
+                $test_results['json_parse_success'] = !is_null($json_data);
+                if ($test_results['json_parse_success']) {
+                    $test_results['project_id_from_json'] = isset($json_data['project_id']) ? $json_data['project_id'] : 'not_found';
+                    $test_results['private_key_exists'] = isset($json_data['private_key']);
+                    $test_results['client_email_exists'] = isset($json_data['client_email']);
+                } else {
+                    $test_results['json_parse_error'] = json_last_error_msg();
+                }
+            }
+            
+            return new WP_REST_Response(array(
+                'success' => true,
+                'message' => 'Class test completed',
+                'test_results' => $test_results
+            ), 200);
+            
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => $e->getMessage(),
+                'test_results' => $test_results,
+                'trace' => $e->getTraceAsString()
+            ), 500);
+        }
+    }
+    
+    /**
+     * Method Test
+     * 
+     * GET /wp-json/bazarino/v1/notifications/method-test
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function method_test($request) {
+        $test_results = array();
+        
+        try {
+            // Test 1: Try to get instance
+            try {
+                $notification_manager = Bazarino_Notification_Manager::get_instance();
+                $test_results['get_instance_success'] = true;
+            } catch (Exception $e) {
+                $test_results['get_instance_success'] = false;
+                $test_results['get_instance_error'] = $e->getMessage();
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to get instance: ' . $e->getMessage(),
+                    'test_results' => $test_results
+                ), 500);
+            }
+            
+            // Test 2: Try to get project ID
+            try {
+                $project_id = $notification_manager->get_project_id();
+                $test_results['get_project_id_success'] = true;
+                $test_results['project_id'] = $project_id;
+            } catch (Exception $e) {
+                $test_results['get_project_id_success'] = false;
+                $test_results['get_project_id_error'] = $e->getMessage();
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to get project ID: ' . $e->getMessage(),
+                    'test_results' => $test_results
+                ), 500);
+            }
+            
+            // Test 3: Try to get access token
+            try {
+                $access_token = $notification_manager->get_access_token();
+                $test_results['get_access_token_success'] = !empty($access_token);
+                $test_results['access_token_length'] = strlen($access_token);
+                if (empty($access_token)) {
+                    $test_results['access_token_empty'] = true;
+                }
+            } catch (Exception $e) {
+                $test_results['get_access_token_success'] = false;
+                $test_results['get_access_token_error'] = $e->getMessage();
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to get access token: ' . $e->getMessage(),
+                    'test_results' => $test_results
+                ), 500);
+            }
+            
+            // All tests passed
+            return new WP_REST_Response(array(
+                'success' => true,
+                'message' => 'All method tests passed',
+                'test_results' => $test_results
+            ), 200);
+            
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => $e->getMessage(),
+                'test_results' => $test_results,
+                'trace' => $e->getTraceAsString()
+            ), 500);
+        }
+    }
+    
+    /**
+     * Ultra Simple Method Test
+     * 
+     * GET /wp-json/bazarino/v1/notifications/ultra-method-test
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function ultra_method_test($request) {
+        $test_results = array();
+        
+        try {
+            // Test 1: Just check if we can call the class
+            $test_results['class_exists'] = class_exists('Bazarino_Notification_Manager');
+            
+            if (!$test_results['class_exists']) {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Class not found',
+                    'test_results' => $test_results
+                ), 500);
+            }
+            
+            // Test 2: Try to get instance without calling methods
+            try {
+                $notification_manager = Bazarino_Notification_Manager::get_instance();
+                $test_results['get_instance_success'] = true;
+            } catch (Exception $e) {
+                $test_results['get_instance_success'] = false;
+                $test_results['get_instance_error'] = $e->getMessage();
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to get instance: ' . $e->getMessage(),
+                    'test_results' => $test_results
+                ), 500);
+            }
+            
+            // Test 3: Check service account manually
+            $service_account = get_option('bazarino_fcm_service_account');
+            $test_results['service_account_exists'] = !empty($service_account);
+            $test_results['service_account_length'] = strlen($service_account);
+            
+            if (empty($service_account)) {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Service Account not configured',
+                    'test_results' => $test_results
+                ), 400);
+            }
+            
+            // Test 4: Try to parse JSON manually
+            $json_data = json_decode($service_account, true);
+            $test_results['json_parse_success'] = !is_null($json_data);
+            
+            if (!$test_results['json_parse_success']) {
+                $test_results['json_parse_error'] = json_last_error_msg();
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'JSON parse error: ' . json_last_error_msg(),
+                    'test_results' => $test_results
+                ), 500);
+            }
+            
+            // Test 5: Check if required fields exist
+            $test_results['project_id_exists'] = isset($json_data['project_id']);
+            $test_results['private_key_exists'] = isset($json_data['private_key']);
+            $test_results['client_email_exists'] = isset($json_data['client_email']);
+            
+            if (!$test_results['project_id_exists']) {
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'project_id not found in Service Account JSON',
+                    'test_results' => $test_results
+                ), 400);
+            }
+            
+            $test_results['project_id'] = $json_data['project_id'];
+            
+            // All basic tests passed
+            return new WP_REST_Response(array(
+                'success' => true,
+                'message' => 'Ultra method test completed successfully',
+                'test_results' => $test_results
+            ), 200);
+            
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => $e->getMessage(),
+                'test_results' => $test_results,
+                'trace' => $e->getTraceAsString()
+            ), 500);
+        }
+    }
+    
+    /**
+     * Final Method Test
+     * 
+     * GET /wp-json/bazarino/v1/notifications/final-method-test
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function final_method_test($request) {
+        $test_results = array();
+        
+        try {
+            // Test 1: Get instance
+            $notification_manager = Bazarino_Notification_Manager::get_instance();
+            $test_results['get_instance_success'] = true;
+            
+            // Test 2: Try to call get_project_id() method
+            try {
+                $project_id = $notification_manager->get_project_id();
+                $test_results['get_project_id_success'] = true;
+                $test_results['project_id'] = $project_id;
+            } catch (Exception $e) {
+                $test_results['get_project_id_success'] = false;
+                $test_results['get_project_id_error'] = $e->getMessage();
+                $test_results['get_project_id_trace'] = $e->getTraceAsString();
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to get project ID: ' . $e->getMessage(),
+                    'test_results' => $test_results
+                ), 500);
+            }
+            
+            // Test 3: Try to call get_access_token() method
+            try {
+                $access_token = $notification_manager->get_access_token();
+                $test_results['get_access_token_success'] = !empty($access_token);
+                $test_results['access_token_length'] = strlen($access_token);
+                if (empty($access_token)) {
+                    $test_results['access_token_empty'] = true;
+                }
+            } catch (Exception $e) {
+                $test_results['get_access_token_success'] = false;
+                $test_results['get_access_token_error'] = $e->getMessage();
+                $test_results['get_access_token_trace'] = $e->getTraceAsString();
+                return new WP_REST_Response(array(
+                    'success' => false,
+                    'error' => 'Failed to get access token: ' . $e->getMessage(),
+                    'test_results' => $test_results
+                ), 500);
+            }
+            
+            // All tests passed
+            return new WP_REST_Response(array(
+                'success' => true,
+                'message' => 'Final method test completed successfully',
+                'test_results' => $test_results
+            ), 200);
+            
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error' => $e->getMessage(),
+                'test_results' => $test_results,
                 'trace' => $e->getTraceAsString()
             ), 500);
         }
