@@ -62,7 +62,7 @@ jQuery(document).ready(function($) {
         $widgetsLibrary.empty();
         
         Object.keys(bazarinoAppBuilder.widget_types).forEach(function(widgetType) {
-            var $widgetItem = $('<div class="bazarino-widget-item" data-widget-type="' + widgetType + '">');
+            var $widgetItem = $('<div class="bazarino-widget-item" data-widget-type="' + widgetType + '" draggable="true">');
             $widgetItem.append('<span class="widget-icon">' + getWidgetIcon(widgetType) + '</span>');
             $widgetItem.append('<span class="widget-name">' + bazarinoAppBuilder.widget_types[widgetType] + '</span>');
             $widgetsLibrary.append($widgetItem);
@@ -89,7 +89,8 @@ jQuery(document).ready(function($) {
     // Initialize event handlers
     function initEventHandlers() {
         // Add new screen
-        $('#add-new-screen').on('click', function() {
+        $(document).on('click', '#add-new-screen', function(e) {
+            e.preventDefault();
             showScreenBuilder();
         });
         
@@ -328,7 +329,7 @@ jQuery(document).ready(function($) {
     
     // Create screen widget element
     function createScreenWidgetElement(widget) {
-        var $widget = $('<div class="bazarino-screen-widget" data-widget-id="' + widget.id + '" data-widget-type="' + widget.widget_type + '">');
+        var $widget = $('<div class="bazarino-screen-widget" data-widget-id="' + widget.id + '" data-widget-type="' + widget.widget_type + '" draggable="true">');
         
         var $header = $('<div class="bazarino-screen-widget-header">');
         $header.append('<div class="bazarino-screen-widget-title">' +
@@ -814,24 +815,19 @@ jQuery(document).ready(function($) {
             screenData.screen_id = currentScreen.id;
         }
         
+        var postData = $.extend({ action: 'bazarino_save_screen', nonce: bazarinoAppBuilder.nonce }, screenData);
+        
         $.ajax({
             url: bazarinoAppBuilder.ajax_url,
             type: 'POST',
-            data: {
-                action: 'bazarino_save_screen',
-                ...screenData,
-                nonce: bazarinoAppBuilder.nonce
-            },
+            data: postData,
             success: function(response) {
                 if (response.success) {
                     currentScreen = response.data.data;
-                    
                     // Save widgets
                     saveScreenWidgets();
-                    
                     // Reload screens list
                     loadScreens();
-                    
                     showNotice('success', bazarinoAppBuilder.strings.save_success);
                 } else {
                     showNotice('error', response.data);
@@ -859,14 +855,12 @@ jQuery(document).ready(function($) {
                 widgetData.widget_id = widget.id;
             }
             
+            var widgetPostData = $.extend({ action: 'bazarino_save_widget', nonce: bazarinoAppBuilder.nonce }, widgetData);
+            
             $.ajax({
                 url: bazarinoAppBuilder.ajax_url,
                 type: 'POST',
-                data: {
-                    action: 'bazarino_save_widget',
-                    ...widgetData,
-                    nonce: bazarinoAppBuilder.nonce
-                },
+                data: widgetPostData,
                 success: function(response) {
                     if (response.success) {
                         // Update widget ID if it was a new widget

@@ -66,9 +66,7 @@ class Bazarino_App_Builder_Admin {
      * Enqueue admin assets
      */
     public function enqueue_admin_assets($hook) {
-        if ('bazarino-app-config_page_bazarino-app-builder' !== $hook) {
-            return;
-        }
+        if (strpos($hook, 'bazarino-app-builder') === false) { return; }
         
         // Enqueue WordPress media uploader
         wp_enqueue_media();
