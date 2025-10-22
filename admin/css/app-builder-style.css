@@ -663,7 +663,8 @@
 
 /* Page background */
 .bazarino-app-builder {
-  background: linear-gradient(180deg, #f8fafc 0%, #f2f5fa 100%);
+  background: var(--bz-bg);
+  color: var(--bz-text);
 }
 
 /* Container as split layout with softened gap */
@@ -997,6 +998,24 @@
     --bz-shadow-lg: 0 16px 40px rgba(0,0,0,0.45);
   }
 
+  /* Force dark background and text for the whole builder */
+  .bazarino-app-builder {
+    background: var(--bz-bg) !important;
+    color: var(--bz-text);
+  }
+  .bazarino-app-builder h1,
+  .bazarino-app-builder h2,
+  .bazarino-app-builder h3,
+  .bazarino-app-builder h4,
+  .bazarino-app-builder h5,
+  .bazarino-app-builder h6,
+  .bazarino-app-builder p,
+  .bazarino-app-builder label,
+  .bazarino-app-builder th,
+  .bazarino-app-builder td {
+    color: var(--bz-text);
+  }
+
   .bazarino-app-builder-section,
   .bazarino-app-builder-main,
   .bazarino-screen-settings,
@@ -1005,8 +1024,41 @@
     background: var(--bz-card);
     border-color: var(--bz-border);
   }
+
+  /* Dark header styles */
+  .bazarino-app-builder-section h2 {
+    background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+    border-bottom: 1px solid var(--bz-border);
+    color: var(--bz-text);
+  }
+
   .bazarino-screen-builder-header {
-    background: rgba(2, 6, 23, 0.65);
+    background: rgba(2, 6, 23, 0.85);
+    border-bottom: 1px solid var(--bz-border);
+  }
+
+  /* List items and cards */
+  .bazarino-screen-item {
+    background: var(--bz-card);
+    border-color: var(--bz-border);
+  }
+  .bazarino-screen-item:hover {
+    background: #0f172a;
+    border-color: #334155;
+  }
+  .bazarino-screen-item.active {
+    border-color: var(--bz-primary);
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.15);
+    background: linear-gradient(180deg, #111827 0%, #0b1220 100%);
+  }
+
+  /* Widget header and preview */
+  .bazarino-screen-widget-header {
+    background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+    border-bottom: 1px solid var(--bz-border);
+  }
+  .bazarino-screen-widget-title {
+    color: var(--bz-text);
   }
   .bazarino-screen-widget-type {
     background: #1e293b;
@@ -1017,7 +1069,23 @@
     border-color: #1f2937;
     color: var(--bz-muted);
   }
+
+  /* Dropzone */
+  .bazarino-widgets-dropzone {
+    background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+    border-color: #1f2937;
+  }
+  .bazarino-widgets-dropzone.drag-over {
+    border-color: var(--bz-accent);
+    background: rgba(0, 78, 137, 0.12);
+    box-shadow: 0 0 0 4px rgba(0, 78, 137, 0.25);
+  }
+
+  /* Icons and buttons */
   .bazarino-widget-item .widget-icon {
     box-shadow: 0 3px 10px rgba(0, 78, 137, 0.45);
+  }
+  .bazarino-app-builder .button.button-primary {
+    color: #fff;
   }
 }
