@@ -427,7 +427,7 @@ class Bazarino_App_Builder_API {
         global $wpdb;
         
         $table_name = $wpdb->prefix . 'bazarino_app_screens';
-        $screens = $wpdb->get_results("SELECT * FROM $table_name ORDER BY created_at DESC");
+        $screens = $wpdb->get_results("SELECT * FROM $table_name ORDER BY updated_at DESC");
         
         return new WP_REST_Response(array(
             'success' => true,
@@ -474,16 +474,23 @@ class Bazarino_App_Builder_API {
         $table_name = $wpdb->prefix . 'bazarino_app_screens';
         
         $data = array(
+            'screen_id' => uniqid('screen_'),
             'name' => $request['name'],
             'route' => $request['route'],
-            'screen_type' => $request['screen_type'],
-            'layout' => $request['layout'],
-            'status' => $request['status'],
+            'description' => '',
+            'settings' => json_encode(array(
+                'screen_type' => $request['screen_type'],
+                'layout' => $request['layout'],
+                'status' => $request['status']
+            )),
+            'is_active' => $request['status'] === 'active' ? 1 : 0,
+            'is_default' => 0,
+            'sort_order' => 0,
             'created_at' => current_time('mysql'),
             'updated_at' => current_time('mysql')
         );
         
-        $format = array('%s', '%s', '%s', '%s', '%s', '%s', '%s');
+        $format = array('%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s');
         
         $result = $wpdb->insert($table_name, $data, $format);
         
@@ -535,16 +542,40 @@ class Bazarino_App_Builder_API {
             ), 404);
         }
         
-        $data = array('updated_at' => current_time('mysql'));
-        $format = array('%s');
+        // Get current settings
+        $current_screen = $wpdb->get_row($wpdb->prepare(
+            "SELECT settings FROM $table_name WHERE id = %d",
+            $screen_id
+        ));
+        
+        $settings = json_decode($current_screen->settings, true) ?: array();
+        
+        // Update settings with new values
+        if (isset($request['screen_type'])) {
+            $settings['screen_type'] = $request['screen_type'];
+        }
+        if (isset($request['layout'])) {
+            $settings['layout'] = $request['layout'];
+        }
+        if (isset($request['status'])) {
+            $settings['status'] = $request['status'];
+        }
+        
+        $data = array(
+            'settings' => json_encode($settings),
+            'is_active' => isset($request['status']) && $request['status'] === 'active' ? 1 : 0,
+            'updated_at' => current_time('mysql')
+        );
+        $format = array('%s', '%d', '%s');
         
         // Add optional fields
-        $optional_fields = array('name', 'route', 'screen_type', 'layout', 'status');
-        foreach ($optional_fields as $field) {
-            if (isset($request[$field])) {
-                $data[$field] = $request[$field];
-                $format[] = '%s';
-            }
+        if (isset($request['name'])) {
+            $data['name'] = $request['name'];
+            $format[] = '%s';
+        }
+        if (isset($request['route'])) {
+            $data['route'] = $request['route'];
+            $format[] = '%s';
         }
         
         $result = $wpdb->update(
@@ -637,10 +668,10 @@ class Bazarino_App_Builder_API {
         
         $table_name = $wpdb->prefix . 'bazarino_app_widgets';
         $widgets = $wpdb->get_results(
-            "SELECT w.*, s.name as screen_name, s.route as screen_route 
-             FROM $table_name w 
-             LEFT JOIN {$wpdb->prefix}bazarino_app_screens s ON w.screen_id = s.id 
-             ORDER BY w.screen_id, w.position"
+            "SELECT w.*, s.name as screen_name, s.route as screen_route
+             FROM $table_name w
+             LEFT JOIN {$wpdb->prefix}bazarino_app_screens s ON w.screen_id = s.screen_id
+             ORDER BY w.screen_id, w.sort_order"
         );
         
         return new WP_REST_Response(array(
@@ -659,7 +690,7 @@ class Bazarino_App_Builder_API {
         $table_name = $wpdb->prefix . 'bazarino_app_widgets';
         
         $widgets = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table_name WHERE screen_id = %d ORDER BY position",
+            "SELECT * FROM $table_name WHERE screen_id = %d ORDER BY sort_order",
             $screen_id
         ));
         
@@ -678,17 +709,21 @@ class Bazarino_App_Builder_API {
         $table_name = $wpdb->prefix . 'bazarino_app_widgets';
         
         $data = array(
+            'widget_id' => uniqid('widget_'),
             'screen_id' => $request['screen_id'],
             'widget_type' => $request['widget_type'],
-            'title' => $request['title'] ?: '',
-            'config' => json_encode($request['config'] ?: array()),
-            'position' => $request['position'],
-            'status' => $request['status'],
+            'name' => $request['title'] ?: '',
+            'settings' => json_encode(array_merge(
+                $request['config'] ?: array(),
+                array('status' => $request['status'])
+            )),
+            'is_visible' => $request['status'] === 'active' ? 1 : 0,
+            'sort_order' => $request['position'],
             'created_at' => current_time('mysql'),
             'updated_at' => current_time('mysql')
         );
         
-        $format = array('%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s');
+        $format = array('%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s');
         
         $result = $wpdb->insert($table_name, $data, $format);
         
@@ -740,22 +775,41 @@ class Bazarino_App_Builder_API {
             ), 404);
         }
         
-        $data = array('updated_at' => current_time('mysql'));
-        $format = array('%s');
+        // Get current settings
+        $current_widget = $wpdb->get_row($wpdb->prepare(
+            "SELECT settings FROM $table_name WHERE id = %d",
+            $widget_id
+        ));
         
-        // Add optional fields
-        $optional_fields = array('widget_type', 'title', 'position', 'status');
-        foreach ($optional_fields as $field) {
-            if (isset($request[$field])) {
-                $data[$field] = $request[$field];
-                $format[] = '%s';
-            }
+        $settings = json_decode($current_widget->settings, true) ?: array();
+        
+        // Update settings with new values
+        if (isset($request['config'])) {
+            $settings = array_merge($settings, $request['config']);
+        }
+        if (isset($request['status'])) {
+            $settings['status'] = $request['status'];
         }
         
-        // Handle config separately
-        if (isset($request['config'])) {
-            $data['config'] = json_encode($request['config']);
+        $data = array(
+            'settings' => json_encode($settings),
+            'is_visible' => isset($request['status']) && $request['status'] === 'active' ? 1 : 0,
+            'updated_at' => current_time('mysql')
+        );
+        $format = array('%s', '%d', '%s');
+        
+        // Add optional fields
+        if (isset($request['widget_type'])) {
+            $data['widget_type'] = $request['widget_type'];
             $format[] = '%s';
+        }
+        if (isset($request['title'])) {
+            $data['name'] = $request['title'];
+            $format[] = '%s';
+        }
+        if (isset($request['position'])) {
+            $data['sort_order'] = $request['position'];
+            $format[] = '%d';
         }
         
         $result = $wpdb->update(
@@ -841,7 +895,7 @@ class Bazarino_App_Builder_API {
         foreach ($widgets as $position => $widget_id) {
             $wpdb->update(
                 $table_name,
-                array('position' => $position, 'updated_at' => current_time('mysql')),
+                array('sort_order' => $position, 'updated_at' => current_time('mysql')),
                 array('id' => $widget_id),
                 array('%d', '%s'),
                 array('%d')
@@ -1038,20 +1092,21 @@ class Bazarino_App_Builder_API {
         // Get screens
         $screens_table = $wpdb->prefix . 'bazarino_app_screens';
         $screens = $wpdb->get_results(
-            "SELECT * FROM $screens_table WHERE status = 'active' ORDER BY created_at"
+            "SELECT * FROM $screens_table WHERE is_active = 1 ORDER BY sort_order"
         );
         
         // Get widgets for each screen
         $widgets_table = $wpdb->prefix . 'bazarino_app_widgets';
         foreach ($screens as &$screen) {
             $screen->widgets = $wpdb->get_results($wpdb->prepare(
-                "SELECT * FROM $widgets_table WHERE screen_id = %d AND status = 'active' ORDER BY position",
+                "SELECT * FROM $widgets_table WHERE screen_id = %d AND is_visible = 1 ORDER BY sort_order",
                 $screen->id
             ));
             
             // Decode config JSON for each widget
             foreach ($screen->widgets as &$widget) {
-                $widget->config = json_decode($widget->config, true) ?: array();
+                $widget->config = json_decode($widget->settings, true) ?: array();
+                $widget->title = $widget->name;
             }
         }
         

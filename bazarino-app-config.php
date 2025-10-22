@@ -62,6 +62,7 @@ class Bazarino_App_Config {
         require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-database-schema.php';
         require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-app-builder-api.php';
         require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-app-builder-admin.php';
+        require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-app-builder-debug.php';
     }
     
     /**
@@ -92,6 +93,7 @@ class Bazarino_App_Config {
             Bazarino_Admin_Panel::get_instance();
             Bazarino_Notification_Admin::get_instance();
             Bazarino_App_Builder_Admin::get_instance();
+            Bazarino_App_Builder_Debug::get_instance();
         }
         
         // Initialize REST API

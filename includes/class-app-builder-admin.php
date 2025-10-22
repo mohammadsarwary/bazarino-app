@@ -33,6 +33,8 @@ class Bazarino_App_Builder_Admin {
         add_action('wp_ajax_bazarino_save_widget', array($this, 'ajax_save_widget'));
         add_action('wp_ajax_bazarino_delete_widget', array($this, 'ajax_delete_widget'));
         add_action('wp_ajax_bazarino_reorder_widgets', array($this, 'ajax_reorder_widgets'));
+        add_action('wp_ajax_bazarino_recreate_tables', array($this, 'ajax_recreate_tables'));
+        add_action('wp_ajax_bazarino_get_table_structure', array($this, 'ajax_get_table_structure'));
     }
     
     /**
@@ -47,6 +49,16 @@ class Bazarino_App_Builder_Admin {
             'bazarino-app-builder',
             array($this, 'render_admin_page'),
             10
+        );
+        
+        add_submenu_page(
+            'bazarino-app-config',
+            __('App Builder Debug', 'bazarino-app-config'),
+            __('App Builder Debug', 'bazarino-app-config'),
+            'manage_options',
+            'bazarino-app-builder-debug',
+            array($this, 'render_debug_page'),
+            20
         );
     }
     
@@ -297,6 +309,373 @@ class Bazarino_App_Builder_Admin {
     }
     
     /**
+     * Render debug page
+     */
+    public function render_debug_page() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        
+        $debug = Bazarino_App_Builder_Debug::get_instance();
+        $status = $debug->get_debug_info();
+        
+        ?>
+        <div class="wrap bazarino-app-builder-debug">
+            <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+            
+            <div class="bazarino-debug-actions">
+                <button type="button" id="check-status" class="button button-primary">
+                    <?php _e('Check System Status', 'bazarino-app-config'); ?>
+                </button>
+                <button type="button" id="recreate-tables" class="button">
+                    <?php _e('Recreate Database Tables', 'bazarino-app-config'); ?>
+                </button>
+            </div>
+            
+            <div id="bazarino-debug-notices"></div>
+            
+            <div class="bazarino-debug-sections">
+                <!-- Database Status -->
+                <div class="bazarino-debug-section">
+                    <h2><?php _e('Database Status', 'bazarino-app-config'); ?></h2>
+                    <table class="wp-list-table widefat fixed striped">
+                        <thead>
+                            <tr>
+                                <th><?php _e('Table', 'bazarino-app-config'); ?></th>
+                                <th><?php _e('Status', 'bazarino-app-config'); ?></th>
+                                <th><?php _e('Rows', 'bazarino-app-config'); ?></th>
+                                <th><?php _e('Actions', 'bazarino-app-config'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (isset($status['database'])): ?>
+                                <?php foreach ($status['database'] as $table_name => $table_info): ?>
+                                    <tr>
+                                        <td><?php echo esc_html($table_name); ?></td>
+                                        <td>
+                                            <?php if ($table_info['exists']): ?>
+                                                <span class="status-active"><?php _e('Exists', 'bazarino-app-config'); ?></span>
+                                            <?php else: ?>
+                                                <span class="status-error"><?php _e('Missing', 'bazarino-app-config'); ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($table_info['exists']): ?>
+                                                <?php echo esc_html($table_info['row_count']); ?>
+                                            <?php else: ?>
+                                                -
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($table_info['exists']): ?>
+                                                <button type="button" class="button button-small view-table" data-table="<?php echo esc_attr($table_name); ?>">
+                                                    <?php _e('View Structure', 'bazarino-app-config'); ?>
+                                                </button>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- API Status -->
+                <div class="bazarino-debug-section">
+                    <h2><?php _e('API Status', 'bazarino-app-config'); ?></h2>
+                    <table class="wp-list-table widefat fixed striped">
+                        <thead>
+                            <tr>
+                                <th><?php _e('Component', 'bazarino-app-config'); ?></th>
+                                <th><?php _e('Status', 'bazarino-app-config'); ?></th>
+                                <th><?php _e('Details', 'bazarino-app-config'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (isset($status['api'])): ?>
+                                <?php foreach ($status['api'] as $component => $info): ?>
+                                    <tr>
+                                        <td><?php echo esc_html($component); ?></td>
+                                        <td>
+                                            <?php if ($info['working']): ?>
+                                                <span class="status-active"><?php _e('Working', 'bazarino-app-config'); ?></span>
+                                            <?php else: ?>
+                                                <span class="status-error"><?php _e('Error', 'bazarino-app-config'); ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if (isset($info['error'])): ?>
+                                                <?php echo esc_html($info['error']); ?>
+                                            <?php elseif (isset($info['status_code'])): ?>
+                                                <?php _e('Status Code:', 'bazarino-app-config'); ?> <?php echo esc_html($info['status_code']); ?>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- File Permissions -->
+                <div class="bazarino-debug-section">
+                    <h2><?php _e('File Permissions', 'bazarino-app-config'); ?></h2>
+                    <table class="wp-list-table widefat fixed striped">
+                        <thead>
+                            <tr>
+                                <th><?php _e('File', 'bazarino-app-config'); ?></th>
+                                <th><?php _e('Exists', 'bazarino-app-config'); ?></th>
+                                <th><?php _e('Readable', 'bazarino-app-config'); ?></th>
+                                <th><?php _e('Writable', 'bazarino-app-config'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (isset($status['permissions'])): ?>
+                                <?php foreach ($status['permissions'] as $file_name => $file_info): ?>
+                                    <tr>
+                                        <td><?php echo esc_html($file_name); ?></td>
+                                        <td>
+                                            <?php if ($file_info['exists']): ?>
+                                                <span class="status-active"><?php _e('Yes', 'bazarino-app-config'); ?></span>
+                                            <?php else: ?>
+                                                <span class="status-error"><?php _e('No', 'bazarino-app-config'); ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if (isset($file_info['readable']) && $file_info['readable']): ?>
+                                                <span class="status-active"><?php _e('Yes', 'bazarino-app-config'); ?></span>
+                                            <?php else: ?>
+                                                <span class="status-error"><?php _e('No', 'bazarino-app-config'); ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if (isset($file_info['writable']) && $file_info['writable']): ?>
+                                                <span class="status-active"><?php _e('Yes', 'bazarino-app-config'); ?></span>
+                                            <?php else: ?>
+                                                <span class="status-error"><?php _e('No', 'bazarino-app-config'); ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Table Structure Modal -->
+            <div id="table-structure-modal" class="bazarino-modal" style="display: none;">
+                <div class="bazarino-modal-content">
+                    <div class="bazarino-modal-header">
+                        <h3><?php _e('Table Structure', 'bazarino-app-config'); ?></h3>
+                        <button type="button" class="bazarino-modal-close">&times;</button>
+                    </div>
+                    <div class="bazarino-modal-body">
+                        <div id="table-structure-content">
+                            <!-- Table structure will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <style>
+        .bazarino-app-builder-debug {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        
+        .bazarino-debug-actions {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .bazarino-debug-sections {
+            margin-top: 20px;
+        }
+        
+        .bazarino-debug-section {
+            background: #fff;
+            border: 1px solid #ccd0d4;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+        }
+        
+        .bazarino-debug-section h2 {
+            margin: 0;
+            padding: 12px 15px;
+            font-size: 14px;
+            font-weight: 600;
+            border-bottom: 1px solid #ccd0d4;
+            background: #f8f9f9;
+        }
+        
+        .bazarino-debug-section table {
+            margin: 0;
+            border: none;
+        }
+        
+        .status-active {
+            color: #46b450;
+            font-weight: 600;
+        }
+        
+        .status-error {
+            color: #dc3232;
+            font-weight: 600;
+        }
+        
+        .bazarino-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 100000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .bazarino-modal-content {
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .bazarino-modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .bazarino-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .bazarino-modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+        }
+        
+        .bazarino-modal-close:hover {
+            background: #f0f0f1;
+        }
+        
+        .bazarino-modal-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .bazarino-modal-body table {
+            margin: 0;
+        }
+        </style>
+        
+        <script>
+        jQuery(document).ready(function($) {
+            // Check status button
+            $('#check-status').on('click', function() {
+                location.reload();
+            });
+            
+            // Recreate tables button
+            $('#recreate-tables').on('click', function() {
+                if (confirm('<?php _e('Are you sure you want to recreate all database tables? This will delete all existing data.', 'bazarino-app-config'); ?>')) {
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'bazarino_recreate_tables',
+                            nonce: '<?php echo wp_create_nonce('bazarino_recreate_tables_nonce'); ?>'
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $('#bazarino-debug-notices').html('<div class="notice notice-success"><p><?php _e('Database tables recreated successfully!', 'bazarino-app-config'); ?></p></div>');
+                                setTimeout(function() {
+                                    location.reload();
+                                }, 2000);
+                            } else {
+                                $('#bazarino-debug-notices').html('<div class="notice notice-error"><p>' + response.data + '</p></div>');
+                            }
+                        },
+                        error: function() {
+                            $('#bazarino-debug-notices').html('<div class="notice notice-error"><p><?php _e('Failed to recreate tables. Please try again.', 'bazarino-app-config'); ?></p></div>');
+                        }
+                    });
+                }
+            });
+            
+            // View table structure
+            $('.view-table').on('click', function() {
+                var tableName = $(this).data('table');
+                var $modal = $('#table-structure-modal');
+                var $content = $('#table-structure-content');
+                
+                $content.html('<p><?php _e('Loading...', 'bazarino-app-config'); ?></p>');
+                $modal.show();
+                
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'bazarino_get_table_structure',
+                        table: tableName,
+                        nonce: '<?php echo wp_create_nonce('bazarino_get_table_structure_nonce'); ?>'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $content.html(response.data);
+                        } else {
+                            $content.html('<p><?php _e('Failed to load table structure.', 'bazarino-app-config'); ?></p>');
+                        }
+                    },
+                    error: function() {
+                        $content.html('<p><?php _e('Failed to load table structure.', 'bazarino-app-config'); ?></p>');
+                    }
+                });
+            });
+            
+            // Modal close
+            $('.bazarino-modal-close').on('click', function() {
+                $(this).closest('.bazarino-modal').hide();
+            });
+            
+            $('.bazarino-modal').on('click', function(e) {
+                if (e.target === this) {
+                    $(this).hide();
+                }
+            });
+        });
+        </script>
+        <?php
+    }
+    
+    /**
      * AJAX: Get screens
      */
     public function ajax_get_screens() {
@@ -537,6 +916,75 @@ class Bazarino_App_Builder_Admin {
             wp_send_json_error($data['error']['message']);
         }
         
+        wp_die();
+    }
+    
+    /**
+     * AJAX: Recreate tables
+     */
+    public function ajax_recreate_tables() {
+        check_ajax_referer('bazarino_recreate_tables_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have permission to access this page.'));
+        }
+        
+        $debug = Bazarino_App_Builder_Debug::get_instance();
+        $result = $debug->recreate_tables();
+        
+        if ($result) {
+            wp_send_json_success(__('Database tables recreated successfully', 'bazarino-app-config'));
+        } else {
+            wp_send_json_error(__('Failed to recreate database tables', 'bazarino-app-config'));
+        }
+        
+        wp_die();
+    }
+    
+    /**
+     * AJAX: Get table structure
+     */
+    public function ajax_get_table_structure() {
+        check_ajax_referer('bazarino_get_table_structure_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have permission to access this page.'));
+        }
+        
+        $table_name = isset($_POST['table']) ? sanitize_text_field($_POST['table']) : '';
+        
+        if (empty($table_name)) {
+            wp_send_json_error(__('Table name is required', 'bazarino-app-config'));
+        }
+        
+        global $wpdb;
+        $debug = Bazarino_App_Builder_Debug::get_instance();
+        $status = $debug->get_debug_info();
+        
+        if (!isset($status['database'][$table_name]) || !$status['database'][$table_name]['exists']) {
+            wp_send_json_error(__('Table does not exist', 'bazarino-app-config'));
+        }
+        
+        $table_info = $status['database'][$table_name];
+        $columns = $table_info['columns'];
+        
+        $html = '<table class="wp-list-table widefat fixed striped">';
+        $html .= '<thead><tr><th>' . __('Column', 'bazarino-app-config') . '</th><th>' . __('Type', 'bazarino-app-config') . '</th><th>' . __('Null', 'bazarino-app-config') . '</th><th>' . __('Key', 'bazarino-app-config') . '</th><th>' . __('Default', 'bazarino-app-config') . '</th></tr></thead>';
+        $html .= '<tbody>';
+        
+        foreach ($columns as $column) {
+            $html .= '<tr>';
+            $html .= '<td>' . esc_html($column->Field) . '</td>';
+            $html .= '<td>' . esc_html($column->Type) . '</td>';
+            $html .= '<td>' . esc_html($column->Null) . '</td>';
+            $html .= '<td>' . esc_html($column->Key) . '</td>';
+            $html .= '<td>' . esc_html($column->Default) . '</td>';
+            $html .= '</tr>';
+        }
+        
+        $html .= '</tbody></table>';
+        
+        wp_send_json_success($html);
         wp_die();
     }
 }
