@@ -26,13 +26,24 @@ class Bazarino_App_Builder_Admin {
         
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+        
+        // Screen actions
         add_action('wp_ajax_bazarino_get_screens', array($this, 'ajax_get_screens'));
+        add_action('wp_ajax_bazarino_get_screen', array($this, 'ajax_get_screen'));
+        add_action('wp_ajax_bazarino_create_screen', array($this, 'ajax_create_screen'));
+        add_action('wp_ajax_bazarino_update_screen', array($this, 'ajax_update_screen'));
         add_action('wp_ajax_bazarino_save_screen', array($this, 'ajax_save_screen'));
         add_action('wp_ajax_bazarino_delete_screen', array($this, 'ajax_delete_screen'));
+        
+        // Widget actions
         add_action('wp_ajax_bazarino_get_widgets', array($this, 'ajax_get_widgets'));
+        add_action('wp_ajax_bazarino_get_available_widgets', array($this, 'ajax_get_available_widgets'));
+        add_action('wp_ajax_bazarino_create_widget', array($this, 'ajax_create_widget'));
         add_action('wp_ajax_bazarino_save_widget', array($this, 'ajax_save_widget'));
         add_action('wp_ajax_bazarino_delete_widget', array($this, 'ajax_delete_widget'));
         add_action('wp_ajax_bazarino_reorder_widgets', array($this, 'ajax_reorder_widgets'));
+        
+        // Debug actions
         add_action('wp_ajax_bazarino_recreate_tables', array($this, 'ajax_recreate_tables'));
         add_action('wp_ajax_bazarino_get_table_structure', array($this, 'ajax_get_table_structure'));
     }
@@ -825,7 +836,110 @@ class Bazarino_App_Builder_Admin {
     }
     
     /**
-     * AJAX: Save screen
+     * AJAX: Get single screen
+     */
+    public function ajax_get_screen() {
+        check_ajax_referer('bazarino_app_builder_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have permission to access this page.'));
+        }
+        
+        $screen_id = isset($_POST['screen_id']) ? intval($_POST['screen_id']) : 0;
+        
+        if ($screen_id === 0) {
+            wp_send_json_error(__('Invalid screen ID', 'bazarino-app-config'));
+        }
+        
+        $request = new WP_REST_Request('GET', '/bazarino/v1/app-builder/screens/' . $screen_id);
+        $response = $this->app_builder_api->get_screen($request);
+        
+        if ($response->get_status() === 200) {
+            $data = $response->get_data();
+            wp_send_json_success($data['data']);
+        } else {
+            wp_send_json_error(__('Failed to load screen', 'bazarino-app-config'));
+        }
+        
+        wp_die();
+    }
+    
+    /**
+     * AJAX: Create screen
+     */
+    public function ajax_create_screen() {
+        check_ajax_referer('bazarino_app_builder_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have permission to access this page.'));
+        }
+        
+        $screen_data = array(
+            'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '',
+            'route' => isset($_POST['route']) ? sanitize_text_field($_POST['route']) : '',
+            'screen_type' => isset($_POST['screen_type']) ? sanitize_text_field($_POST['screen_type']) : 'custom',
+            'layout' => isset($_POST['layout']) ? sanitize_text_field($_POST['layout']) : 'scroll',
+            'is_active' => isset($_POST['is_active']) ? (bool)$_POST['is_active'] : true
+        );
+        
+        if (empty($screen_data['name'])) {
+            wp_send_json_error(__('Screen name is required', 'bazarino-app-config'));
+        }
+        
+        $request = new WP_REST_Request('POST', '/bazarino/v1/app-builder/screens');
+        $request->set_body_params($screen_data);
+        $response = $this->app_builder_api->create_screen($request);
+        
+        if ($response->get_status() === 201) {
+            $data = $response->get_data();
+            wp_send_json_success($data['data']);
+        } else {
+            wp_send_json_error(__('Failed to create screen', 'bazarino-app-config'));
+        }
+        
+        wp_die();
+    }
+    
+    /**
+     * AJAX: Update screen
+     */
+    public function ajax_update_screen() {
+        check_ajax_referer('bazarino_app_builder_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have permission to access this page.'));
+        }
+        
+        $screen_id = isset($_POST['screen_id']) ? intval($_POST['screen_id']) : 0;
+        
+        if ($screen_id === 0) {
+            wp_send_json_error(__('Invalid screen ID', 'bazarino-app-config'));
+        }
+        
+        $screen_data = array(
+            'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '',
+            'route' => isset($_POST['route']) ? sanitize_text_field($_POST['route']) : '',
+            'screen_type' => isset($_POST['screen_type']) ? sanitize_text_field($_POST['screen_type']) : 'custom',
+            'layout' => isset($_POST['layout']) ? sanitize_text_field($_POST['layout']) : 'scroll',
+            'is_active' => isset($_POST['is_active']) ? (bool)$_POST['is_active'] : true
+        );
+        
+        $request = new WP_REST_Request('PUT', '/bazarino/v1/app-builder/screens/' . $screen_id);
+        $request->set_body_params($screen_data);
+        $response = $this->app_builder_api->update_screen($request);
+        
+        if ($response->get_status() === 200) {
+            $data = $response->get_data();
+            wp_send_json_success($data['data']);
+        } else {
+            wp_send_json_error(__('Failed to update screen', 'bazarino-app-config'));
+        }
+        
+        wp_die();
+    }
+    
+    /**
+     * AJAX: Save screen (legacy)
      */
     public function ajax_save_screen() {
         check_ajax_referer('bazarino_app_builder_nonce', 'nonce');
@@ -936,7 +1050,95 @@ class Bazarino_App_Builder_Admin {
     }
     
     /**
-     * AJAX: Save widget
+     * AJAX: Get available widget types
+     */
+    public function ajax_get_available_widgets() {
+        check_ajax_referer('bazarino_app_builder_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have permission to access this page.'));
+        }
+        
+        // Return available widget types
+        $widgets = array(
+            array(
+                'widget_type' => 'slider',
+                'name' => __('Image Slider', 'bazarino-app-config'),
+                'description' => __('Carousel with auto-play images', 'bazarino-app-config'),
+                'icon' => 'dashicons-images-alt2'
+            ),
+            array(
+                'widget_type' => 'categories',
+                'name' => __('Categories Grid', 'bazarino-app-config'),
+                'description' => __('Grid of product categories', 'bazarino-app-config'),
+                'icon' => 'dashicons-category'
+            ),
+            array(
+                'widget_type' => 'flash_sales',
+                'name' => __('Flash Sales', 'bazarino-app-config'),
+                'description' => __('Limited time offers banner', 'bazarino-app-config'),
+                'icon' => 'dashicons-tagcloud'
+            ),
+            array(
+                'widget_type' => 'products_grid',
+                'name' => __('Products Grid', 'bazarino-app-config'),
+                'description' => __('Grid of featured products', 'bazarino-app-config'),
+                'icon' => 'dashicons-products'
+            ),
+            array(
+                'widget_type' => 'banners',
+                'name' => __('Banner', 'bazarino-app-config'),
+                'description' => __('Promotional banner image', 'bazarino-app-config'),
+                'icon' => 'dashicons-format-image'
+            )
+        );
+        
+        wp_send_json_success($widgets);
+        wp_die();
+    }
+    
+    /**
+     * AJAX: Create widget
+     */
+    public function ajax_create_widget() {
+        check_ajax_referer('bazarino_app_builder_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have permission to access this page.'));
+        }
+        
+        $widget_data = array(
+            'screen_id' => isset($_POST['screen_id']) ? intval($_POST['screen_id']) : 0,
+            'widget_type' => isset($_POST['widget_type']) ? sanitize_text_field($_POST['widget_type']) : '',
+            'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '',
+            'sort_order' => isset($_POST['sort_order']) ? intval($_POST['sort_order']) : 0,
+            'is_visible' => isset($_POST['is_visible']) ? (bool)$_POST['is_visible'] : true
+        );
+        
+        if (empty($widget_data['widget_type'])) {
+            wp_send_json_error(__('Widget type is required', 'bazarino-app-config'));
+        }
+        
+        if ($widget_data['screen_id'] <= 0) {
+            wp_send_json_error(__('Screen ID is required', 'bazarino-app-config'));
+        }
+        
+        $request = new WP_REST_Request('POST', '/bazarino/v1/app-builder/widgets');
+        $request->set_body_params($widget_data);
+        $response = $this->app_builder_api->create_widget($request);
+        
+        if ($response->get_status() === 201) {
+            $data = $response->get_data();
+            wp_send_json_success($data['data']);
+        } else {
+            wp_send_json_error(__('Failed to create widget', 'bazarino-app-config'));
+        }
+        
+        wp_die();
+    }
+    
+    /**
+     * AJAX: Save widget (legacy)
      */
     public function ajax_save_widget() {
         check_ajax_referer('bazarino_app_builder_nonce', 'nonce');
