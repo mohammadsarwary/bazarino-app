@@ -1,7 +1,7 @@
 /**
- * Bazarino Visual App Builder - JavaScript
- * Version: 2.0.0
- * Professional drag & drop interface
+ * Bazarino Visual App Builder - JavaScript Enhanced
+ * Version: 2.1.0
+ * Professional drag & drop interface with advanced features
  */
 
 jQuery(document).ready(function($) {
@@ -23,7 +23,9 @@ jQuery(document).ready(function($) {
         loadWidgetsLibrary();
         initEventHandlers();
         initDragAndDrop();
+        initSortable();
         initTabs();
+        initColorPickers();
     }
     
     /* ===============================================
@@ -44,9 +46,10 @@ jQuery(document).ready(function($) {
         $('#screen-settings-toggle').on('click', toggleSettingsPanel);
         $('.bazarino-close-settings').on('click', closeSettingsPanel);
         
-        // Screen name input
+        // Screen name input - live update
         $('#screen-name').on('input', function() {
-            $('#canvas-screen-name').text($(this).val() || 'Screen Name');
+            const name = $(this).val() || 'Screen Name';
+            $('#canvas-screen-name').text(name);
             updateScreenRoute();
         });
         
@@ -66,6 +69,11 @@ jQuery(document).ready(function($) {
                 closeSettingsPanel();
             }
         });
+        
+        // Modal close
+        $('.bazarino-modal-close').on('click', function() {
+            $(this).closest('.bazarino-modal').fadeOut();
+        });
     }
     
     /* ===============================================
@@ -83,6 +91,74 @@ jQuery(document).ready(function($) {
             $('.bazarino-tab-content').removeClass('active');
             $('#' + tab + '-tab').addClass('active');
         });
+    }
+    
+    /* ===============================================
+       COLOR PICKERS
+       =============================================== */
+    function initColorPickers() {
+        $(document).on('focus', '.bazarino-color-picker', function() {
+            if (!$(this).hasClass('wp-color-picker-initialized')) {
+                $(this).wpColorPicker({
+                    change: function(event, ui) {
+                        $(this).trigger('change');
+                    }
+                });
+                $(this).addClass('wp-color-picker-initialized');
+            }
+        });
+    }
+    
+    /* ===============================================
+       SORTABLE WIDGETS
+       =============================================== */
+    function initSortable() {
+        $('#widgets-dropzone').sortable({
+            items: '.bazarino-canvas-widget',
+            handle: '.bazarino-widget-header',
+            placeholder: 'bazarino-widget-placeholder',
+            tolerance: 'pointer',
+            cursor: 'move',
+            update: function(event, ui) {
+                updateWidgetOrder();
+            }
+        });
+    }
+    
+    function updateWidgetOrder() {
+        const $widgets = $('#widgets-dropzone .bazarino-canvas-widget');
+        const order = [];
+        
+        $widgets.each(function(index) {
+            const widgetId = $(this).data('widget-id');
+            const widget = currentWidgets.find(w => w.widget_id == widgetId);
+            if (widget) {
+                widget.sort_order = index;
+                order.push({
+                    widget_id: widgetId,
+                    sort_order: index
+                });
+            }
+        });
+        
+        // Auto-save order
+        if (currentScreen && order.length > 0) {
+            $.ajax({
+                url: bazarinoAppBuilder.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'bazarino_reorder_widgets',
+                    nonce: bazarinoAppBuilder.nonce,
+                    screen_id: currentScreen.screen_id,
+                    order: JSON.stringify(order)
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showNotice('success', 'Widget order updated', 2000);
+                    }
+                }
+            });
+        }
     }
     
     /* ===============================================
@@ -126,15 +202,16 @@ jQuery(document).ready(function($) {
         }
         
         screens.forEach(function(screen) {
+            const statusClass = screen.is_active ? 'active' : 'inactive';
+            const statusText = screen.is_active ? 'Active' : 'Inactive';
+            
             const $item = $(`
                 <div class="bazarino-screen-item" data-screen-id="${screen.screen_id}">
                     <div>
                         <div class="screen-name">${escapeHtml(screen.name)}</div>
                         <div class="screen-route">${escapeHtml(screen.route || '/screen')}</div>
                     </div>
-                    <span class="screen-status ${screen.is_active ? 'active' : 'inactive'}">
-                        ${screen.is_active ? 'Active' : 'Inactive'}
-                    </span>
+                    <span class="screen-status ${statusClass}">${statusText}</span>
                 </div>
             `);
             
@@ -247,6 +324,24 @@ jQuery(document).ready(function($) {
                 name: 'Banner',
                 description: 'Promotional banner image',
                 icon: 'dashicons-format-image'
+            },
+            {
+                widget_type: 'text_block',
+                name: 'Text Block',
+                description: 'Rich text content',
+                icon: 'dashicons-text'
+            },
+            {
+                widget_type: 'spacer',
+                name: 'Spacer',
+                description: 'Empty space divider',
+                icon: 'dashicons-minus'
+            },
+            {
+                widget_type: 'divider',
+                name: 'Divider',
+                description: 'Horizontal line separator',
+                icon: 'dashicons-minus'
             }
         ];
     }
@@ -285,6 +380,7 @@ jQuery(document).ready(function($) {
                 if (response.success) {
                     currentWidgets = response.data || [];
                     renderCanvasWidgets(currentWidgets);
+                    updateStats();
                 }
             }
         });
@@ -310,11 +406,19 @@ jQuery(document).ready(function($) {
     }
     
     function addWidgetToCanvas(widget) {
+        const visibleIcon = widget.is_visible ? 'visibility' : 'hidden';
+        
         const $widget = $(`
             <div class="bazarino-canvas-widget" data-widget-id="${widget.widget_id}" data-widget-type="${widget.widget_type}">
                 <div class="bazarino-widget-header">
-                    <div class="bazarino-widget-title">${widget.name}</div>
+                    <div class="bazarino-widget-title">
+                        <span class="dashicons dashicons-menu"></span>
+                        ${widget.name}
+                    </div>
                     <div class="bazarino-widget-actions">
+                        <button type="button" class="bazarino-widget-action widget-visibility" title="${widget.is_visible ? 'Hide' : 'Show'}">
+                            <span class="dashicons dashicons-${visibleIcon}"></span>
+                        </button>
                         <button type="button" class="bazarino-widget-action widget-settings" title="Settings">
                             <span class="dashicons dashicons-admin-generic"></span>
                         </button>
@@ -323,8 +427,8 @@ jQuery(document).ready(function($) {
                         </button>
                     </div>
                 </div>
-                <div style="padding: 12px; background: #f9fafb; border-radius: 6px; font-size: 12px; color: #6b7280; text-align: center;">
-                    ${widget.widget_type} widget preview
+                <div class="bazarino-widget-preview">
+                    ${getWidgetPreview(widget)}
                 </div>
             </div>
         `);
@@ -336,6 +440,12 @@ jQuery(document).ready(function($) {
             }
         });
         
+        // Visibility toggle
+        $widget.find('.widget-visibility').on('click', function(e) {
+            e.stopPropagation();
+            toggleWidgetVisibility(widget);
+        });
+        
         // Settings button
         $widget.find('.widget-settings').on('click', function(e) {
             e.stopPropagation();
@@ -345,10 +455,28 @@ jQuery(document).ready(function($) {
         // Delete button
         $widget.find('.widget-delete').on('click', function(e) {
             e.stopPropagation();
-            deleteWidget(widget.widget_id);
+            if (confirm('Are you sure you want to delete this widget?')) {
+                deleteWidget(widget.widget_id);
+            }
         });
         
         $('#widgets-dropzone').append($widget);
+    }
+    
+    function getWidgetPreview(widget) {
+        const type = widget.widget_type;
+        const previews = {
+            'slider': '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 80px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">Image Slider</div>',
+            'categories': '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">' + '<div style="background: #f3f4f6; height: 40px; border-radius: 4px;"></div>'.repeat(4) + '</div>',
+            'flash_sales': '<div style="background: #fef3c7; border: 2px dashed #f59e0b; height: 60px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #92400e; font-size: 11px; font-weight: 600;">⚡ FLASH SALE</div>',
+            'products_grid': '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">' + '<div style="background: #f9fafb; border: 1px solid #e5e7eb; height: 80px; border-radius: 4px;"></div>'.repeat(4) + '</div>',
+            'banners': '<div style="background: linear-gradient(45deg, #f59e0b 0%, #ef4444 100%); height: 100px; border-radius: 6px;"></div>',
+            'text_block': '<div style="padding: 12px; background: #f9fafb; border-radius: 6px; font-size: 11px; line-height: 1.6;">Lorem ipsum dolor sit amet, consectetur adipiscing elit...</div>',
+            'spacer': '<div style="height: 40px; border: 1px dashed #e5e7eb; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 10px;">SPACER</div>',
+            'divider': '<div style="height: 1px; background: #e5e7eb; margin: 20px 0;"></div>'
+        };
+        
+        return previews[type] || `<div style="padding: 12px; background: #f9fafb; border-radius: 6px; font-size: 12px; color: #6b7280; text-align: center;">${type} widget</div>`;
     }
     
     function selectWidget(widget) {
@@ -360,51 +488,261 @@ jQuery(document).ready(function($) {
         showWidgetProperties(widget);
     }
     
+    function toggleWidgetVisibility(widget) {
+        widget.is_visible = !widget.is_visible;
+        
+        // Update icon
+        const $widget = $(`.bazarino-canvas-widget[data-widget-id="${widget.widget_id}"]`);
+        const icon = widget.is_visible ? 'visibility' : 'hidden';
+        $widget.find('.widget-visibility .dashicons').attr('class', 'dashicons dashicons-' + icon);
+        $widget.find('.widget-visibility').attr('title', widget.is_visible ? 'Hide' : 'Show');
+        
+        // Add visual feedback
+        $widget.css('opacity', widget.is_visible ? '1' : '0.5');
+        
+        // Auto-save
+        saveWidgetProperty(widget.widget_id, 'is_visible', widget.is_visible);
+    }
+    
     function showWidgetProperties(widget) {
         // Switch to properties tab
         $('.bazarino-tab-btn[data-tab="properties"]').click();
         
-        // Render properties
+        // Render properties based on widget type
         const $properties = $('#widget-properties');
-        $properties.html(`
+        let propertiesHTML = `
+            <div class="bazarino-properties-header">
+                <h3>${widget.name} Settings</h3>
+                <small>Widget Type: ${widget.widget_type}</small>
+            </div>
+            
             <div class="bazarino-property-group">
                 <label class="bazarino-property-label">Widget Name</label>
-                <input type="text" class="bazarino-property-input" value="${widget.name}" data-property="name" />
+                <input type="text" class="bazarino-property-input" value="${widget.name}" data-property="name" data-widget-id="${widget.widget_id}" />
             </div>
-            <div class="bazarino-property-group">
-                <label class="bazarino-property-label">Widget Type</label>
-                <input type="text" class="bazarino-property-input" value="${widget.widget_type}" disabled />
-            </div>
+            
             <div class="bazarino-property-group">
                 <label class="bazarino-toggle-label">
-                    <input type="checkbox" ${widget.is_visible ? 'checked' : ''} data-property="visible" />
+                    <input type="checkbox" ${widget.is_visible ? 'checked' : ''} data-property="visible" data-widget-id="${widget.widget_id}" />
                     <span class="bazarino-toggle-switch"></span>
                     <span>Visible</span>
                 </label>
+                <small>Show or hide this widget in the app</small>
             </div>
-        `);
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;" />
+            
+            ${getWidgetSpecificProperties(widget)}
+        `;
+        
+        $properties.html(propertiesHTML);
         
         // Add property change handlers
-        $properties.find('[data-property]').on('change input', function() {
+        $properties.find('[data-property][data-widget-id]').on('change input', function() {
             const property = $(this).data('property');
+            const widgetId = $(this).data('widget-id');
             const value = $(this).is(':checkbox') ? $(this).prop('checked') : $(this).val();
-            updateWidgetProperty(widget.widget_id, property, value);
+            updateWidgetProperty(widgetId, property, value);
         });
+        
+        // Re-init color pickers
+        initColorPickers();
+    }
+    
+    function getWidgetSpecificProperties(widget) {
+        const settings = widget.settings || {};
+        
+        switch(widget.widget_type) {
+            case 'slider':
+                return `
+                    <h4 style="margin: 0 0 16px 0; font-size: 13px; font-weight: 700; color: var(--text-primary);">Slider Settings</h4>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-toggle-label">
+                            <input type="checkbox" ${settings.auto_play !== false ? 'checked' : ''} data-property="auto_play" data-widget-id="${widget.widget_id}" />
+                            <span class="bazarino-toggle-switch"></span>
+                            <span>Auto Play</span>
+                        </label>
+                    </div>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Interval (seconds)</label>
+                        <input type="number" class="bazarino-property-input" value="${settings.interval || 5}" min="1" max="60" data-property="interval" data-widget-id="${widget.widget_id}" />
+                    </div>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Height (px)</label>
+                        <input type="number" class="bazarino-property-input" value="${settings.height || 200}" min="100" max="500" data-property="height" data-widget-id="${widget.widget_id}" />
+                    </div>
+                `;
+                
+            case 'categories':
+                return `
+                    <h4 style="margin: 0 0 16px 0; font-size: 13px; font-weight: 700;">Categories Settings</h4>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Columns</label>
+                        <select class="bazarino-property-input" data-property="columns" data-widget-id="${widget.widget_id}">
+                            <option value="2" ${settings.columns == 2 ? 'selected' : ''}>2 Columns</option>
+                            <option value="3" ${settings.columns == 3 ? 'selected' : ''}>3 Columns</option>
+                            <option value="4" ${settings.columns == 4 ? 'selected' : ''}>4 Columns</option>
+                        </select>
+                    </div>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Show Count</label>
+                        <input type="number" class="bazarino-property-input" value="${settings.show_count || 8}" min="1" max="20" data-property="show_count" data-widget-id="${widget.widget_id}" />
+                    </div>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-toggle-label">
+                            <input type="checkbox" ${settings.hide_empty !== false ? 'checked' : ''} data-property="hide_empty" data-widget-id="${widget.widget_id}" />
+                            <span class="bazarino-toggle-switch"></span>
+                            <span>Hide Empty</span>
+                        </label>
+                    </div>
+                `;
+                
+            case 'products_grid':
+                return `
+                    <h4 style="margin: 0 0 16px 0; font-size: 13px; font-weight: 700;">Products Settings</h4>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Columns</label>
+                        <select class="bazarino-property-input" data-property="columns" data-widget-id="${widget.widget_id}">
+                            <option value="1" ${settings.columns == 1 ? 'selected' : ''}>1 Column</option>
+                            <option value="2" ${settings.columns == 2 ? 'selected' : ''}>2 Columns</option>
+                            <option value="3" ${settings.columns == 3 ? 'selected' : ''}>3 Columns</option>
+                        </select>
+                    </div>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Products Per Page</label>
+                        <input type="number" class="bazarino-property-input" value="${settings.per_page || 10}" min="4" max="50" data-property="per_page" data-widget-id="${widget.widget_id}" />
+                    </div>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Product Type</label>
+                        <select class="bazarino-property-input" data-property="product_type" data-widget-id="${widget.widget_id}">
+                            <option value="all" ${settings.product_type == 'all' ? 'selected' : ''}>All Products</option>
+                            <option value="featured" ${settings.product_type == 'featured' ? 'selected' : ''}>Featured</option>
+                            <option value="on_sale" ${settings.product_type == 'on_sale' ? 'selected' : ''}>On Sale</option>
+                            <option value="recent" ${settings.product_type == 'recent' ? 'selected' : ''}>Recent</option>
+                        </select>
+                    </div>
+                `;
+                
+            case 'flash_sales':
+                return `
+                    <h4 style="margin: 0 0 16px 0; font-size: 13px; font-weight: 700;">Flash Sales Settings</h4>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Layout</label>
+                        <select class="bazarino-property-input" data-property="layout" data-widget-id="${widget.widget_id}">
+                            <option value="horizontal" ${settings.layout == 'horizontal' ? 'selected' : ''}>Horizontal Scroll</option>
+                            <option value="vertical" ${settings.layout == 'vertical' ? 'selected' : ''}>Vertical List</option>
+                            <option value="grid" ${settings.layout == 'grid' ? 'selected' : ''}>Grid</option>
+                        </select>
+                    </div>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-toggle-label">
+                            <input type="checkbox" ${settings.show_timer !== false ? 'checked' : ''} data-property="show_timer" data-widget-id="${widget.widget_id}" />
+                            <span class="bazarino-toggle-switch"></span>
+                            <span>Show Timer</span>
+                        </label>
+                    </div>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Items Count</label>
+                        <input type="number" class="bazarino-property-input" value="${settings.items_count || 5}" min="3" max="20" data-property="items_count" data-widget-id="${widget.widget_id}" />
+                    </div>
+                `;
+                
+            case 'text_block':
+                return `
+                    <h4 style="margin: 0 0 16px 0; font-size: 13px; font-weight: 700;">Text Block Settings</h4>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Content</label>
+                        <textarea class="bazarino-property-input" rows="4" data-property="content" data-widget-id="${widget.widget_id}">${settings.content || ''}</textarea>
+                    </div>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Text Color</label>
+                        <input type="text" class="bazarino-property-input bazarino-color-picker" value="${settings.text_color || '#1f2937'}" data-property="text_color" data-widget-id="${widget.widget_id}" />
+                    </div>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Background Color</label>
+                        <input type="text" class="bazarino-property-input bazarino-color-picker" value="${settings.bg_color || '#ffffff'}" data-property="bg_color" data-widget-id="${widget.widget_id}" />
+                    </div>
+                `;
+                
+            case 'spacer':
+                return `
+                    <h4 style="margin: 0 0 16px 0; font-size: 13px; font-weight: 700;">Spacer Settings</h4>
+                    
+                    <div class="bazarino-property-group">
+                        <label class="bazarino-property-label">Height (px)</label>
+                        <input type="number" class="bazarino-property-input" value="${settings.height || 40}" min="10" max="200" data-property="height" data-widget-id="${widget.widget_id}" />
+                    </div>
+                `;
+                
+            default:
+                return `
+                    <div style="padding: 20px; text-align: center; color: #9ca3af;">
+                        <p>No specific settings for this widget type.</p>
+                    </div>
+                `;
+        }
     }
     
     function updateWidgetProperty(widgetId, property, value) {
         const widget = currentWidgets.find(w => w.widget_id == widgetId);
-        if (widget) {
-            if (property === 'name') widget.name = value;
-            if (property === 'visible') widget.is_visible = value;
+        if (!widget) return;
+        
+        if (property === 'name') {
+            widget.name = value;
+            $(`.bazarino-canvas-widget[data-widget-id="${widgetId}"] .bazarino-widget-title`).text(value);
+        } else if (property === 'visible') {
+            widget.is_visible = value;
+            toggleWidgetVisibility(widget);
+        } else {
+            // Widget-specific setting
+            if (!widget.settings) widget.settings = {};
+            widget.settings[property] = value;
         }
+        
+        // Auto-save
+        saveWidgetProperty(widgetId, property, value);
+    }
+    
+    function saveWidgetProperty(widgetId, property, value) {
+        const widget = currentWidgets.find(w => w.widget_id == widgetId);
+        if (!widget) return;
+        
+        $.ajax({
+            url: bazarinoAppBuilder.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'bazarino_save_widget',
+                nonce: bazarinoAppBuilder.nonce,
+                widget_id: widgetId,
+                screen_id: currentScreen.screen_id,
+                widget_type: widget.widget_type,
+                title: widget.name,
+                config: JSON.stringify(widget.settings || {}),
+                position: widget.sort_order,
+                status: widget.is_visible ? 'active' : 'inactive'
+            },
+            success: function(response) {
+                // Silent save
+            }
+        });
     }
     
     function deleteWidget(widgetId) {
-        if (!confirm('Are you sure you want to delete this widget?')) {
-            return;
-        }
-        
         $.ajax({
             url: bazarinoAppBuilder.ajax_url,
             type: 'POST',
@@ -421,6 +759,7 @@ jQuery(document).ready(function($) {
                         if (currentWidgets.length === 0) {
                             $('#widgets-dropzone .bazarino-dropzone-placeholder').show();
                         }
+                        updateStats();
                     });
                     showNotice('success', 'Widget deleted successfully');
                 } else {
@@ -464,10 +803,6 @@ jQuery(document).ready(function($) {
                 createWidget(widgetType);
             }
         });
-        
-        // Canvas widgets - sortable (reorder)
-        // Note: This would require jQuery UI sortable or a similar library
-        // For now, widgets can be reordered manually via settings
     }
     
     function createWidget(widgetType) {
@@ -475,6 +810,8 @@ jQuery(document).ready(function($) {
             showNotice('error', 'Please select a screen first');
             return;
         }
+        
+        const widgetName = widgetType.charAt(0).toUpperCase() + widgetType.slice(1).replace(/_/g, ' ');
         
         $.ajax({
             url: bazarinoAppBuilder.ajax_url,
@@ -484,8 +821,9 @@ jQuery(document).ready(function($) {
                 nonce: bazarinoAppBuilder.nonce,
                 screen_id: currentScreen.screen_id,
                 widget_type: widgetType,
-                name: widgetType.charAt(0).toUpperCase() + widgetType.slice(1).replace(/_/g, ' '),
-                sort_order: currentWidgets.length
+                name: widgetName,
+                sort_order: currentWidgets.length,
+                is_visible: true
             },
             success: function(response) {
                 if (response.success && response.data) {
@@ -493,6 +831,7 @@ jQuery(document).ready(function($) {
                     addWidgetToCanvas(response.data);
                     $('#widgets-dropzone .bazarino-dropzone-placeholder').hide();
                     showNotice('success', 'Widget added successfully');
+                    updateStats();
                 } else {
                     showNotice('error', 'Failed to add widget');
                 }
@@ -584,7 +923,6 @@ jQuery(document).ready(function($) {
     
     function handleSaveAll() {
         showNotice('info', 'Saving all changes...');
-        // Save current screen if any
         if (currentScreen) {
             handleSaveScreen();
         }
@@ -625,13 +963,18 @@ jQuery(document).ready(function($) {
        STATS
        =============================================== */
     function updateStats(screens) {
+        if (!screens) {
+            // Update just widget count
+            $('#total-widgets').text(currentWidgets.length);
+            return;
+        }
+        
         const totalScreens = screens.length;
         const activeScreens = screens.filter(s => s.is_active).length;
-        const totalWidgets = currentWidgets.length;
         
         $('#total-screens').text(totalScreens);
         $('#active-screens').text(activeScreens);
-        $('#total-widgets').text(totalWidgets);
+        $('#total-widgets').text(currentWidgets.length);
     }
     
     function updateScreenRoute() {
@@ -648,7 +991,7 @@ jQuery(document).ready(function($) {
     /* ===============================================
        UTILITIES
        =============================================== */
-    function showNotice(type, message) {
+    function showNotice(type, message, duration) {
         const $notice = $(`
             <div class="bazarino-notice bazarino-notice-${type}">
                 ${message}
@@ -661,7 +1004,7 @@ jQuery(document).ready(function($) {
             $notice.fadeOut(function() {
                 $(this).remove();
             });
-        }, 3000);
+        }, duration || 3000);
     }
     
     function escapeHtml(text) {
@@ -672,7 +1015,7 @@ jQuery(document).ready(function($) {
             '"': '&quot;',
             "'": '&#039;'
         };
-        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
     }
     
     /* ===============================================

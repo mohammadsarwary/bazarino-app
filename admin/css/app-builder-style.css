@@ -807,6 +807,43 @@
     color: var(--text-primary);
 }
 
+.bazarino-widget-preview {
+    padding: 12px;
+    background: #ffffff;
+    border-radius: 6px;
+}
+
+.bazarino-canvas-widget .dashicons-menu {
+    cursor: move;
+    margin-right: 8px;
+    color: var(--text-muted);
+}
+
+.bazarino-canvas-widget:hover .dashicons-menu {
+    color: var(--primary-color);
+}
+
+/* Widget placeholder during drag */
+.bazarino-widget-placeholder {
+    border: 2px dashed var(--primary-color) !important;
+    background: rgba(102, 126, 234, 0.05) !important;
+    visibility: visible !important;
+}
+
+.bazarino-widget-placeholder * {
+    visibility: hidden;
+}
+
+/* Drag over state */
+.drag-over {
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.drag-over .bazarino-dropzone-placeholder {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
 /* ===============================================
    RIGHT SIDEBAR - TABS
    =============================================== */
@@ -936,6 +973,24 @@
     margin-bottom: 16px;
 }
 
+.bazarino-properties-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.bazarino-properties-header h3 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.bazarino-properties-header small {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
 .bazarino-property-group {
     margin-bottom: 20px;
 }
@@ -948,19 +1003,33 @@
     color: var(--text-primary);
 }
 
-.bazarino-property-input {
+.bazarino-property-input,
+.bazarino-property-input textarea,
+.bazarino-property-input select {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-sm);
     font-size: 14px;
+    font-family: inherit;
     transition: all var(--transition-fast);
 }
 
-.bazarino-property-input:focus {
+.bazarino-property-input:focus,
+textarea.bazarino-property-input:focus,
+select.bazarino-property-input:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+textarea.bazarino-property-input {
+    resize: vertical;
+    min-height: 80px;
+}
+
+select.bazarino-property-input {
+    cursor: pointer;
 }
 
 /* ===============================================
