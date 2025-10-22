@@ -135,130 +135,258 @@ class Bazarino_App_Builder_Admin {
         
         ?>
         <div class="wrap bazarino-app-builder">
-            <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+            <!-- Header -->
+            <div class="bazarino-builder-header">
+                <div class="bazarino-builder-header-content">
+                    <div class="bazarino-builder-branding">
+                        <span class="dashicons dashicons-smartphone bazarino-builder-icon"></span>
+                        <h1><?php _e('Visual App Builder', 'bazarino-app-config'); ?></h1>
+                        <span class="bazarino-builder-version">v1.0.0</span>
+                    </div>
+                    <div class="bazarino-builder-header-actions">
+                        <button type="button" id="preview-app" class="bazarino-btn bazarino-btn-secondary">
+                            <span class="dashicons dashicons-visibility"></span>
+                            <?php _e('Preview App', 'bazarino-app-config'); ?>
+                        </button>
+                        <button type="button" id="save-all" class="bazarino-btn bazarino-btn-primary">
+                            <span class="dashicons dashicons-saved"></span>
+                            <?php _e('Save All Changes', 'bazarino-app-config'); ?>
+                        </button>
+                    </div>
+                </div>
+            </div>
             
             <div id="bazarino-app-builder-notices"></div>
             
-            <div class="bazarino-app-builder-container">
-                <div class="bazarino-app-builder-sidebar">
-                    <div class="bazarino-app-builder-section">
-                        <h2><?php _e('Screens', 'bazarino-app-config'); ?></h2>
-                        <div class="bazarino-app-builder-actions">
-                            <button type="button" id="add-new-screen" class="button button-primary">
-                                <?php _e('Add New Screen', 'bazarino-app-config'); ?>
+            <!-- Main Container - 3 Column Layout -->
+            <div class="bazarino-builder-container">
+                
+                <!-- Left Sidebar: Screens Management -->
+                <div class="bazarino-builder-sidebar bazarino-builder-sidebar-left">
+                    <div class="bazarino-sidebar-section">
+                        <div class="bazarino-section-header">
+                            <h2>
+                                <span class="dashicons dashicons-admin-page"></span>
+                                <?php _e('Screens', 'bazarino-app-config'); ?>
+                            </h2>
+                            <button type="button" id="add-new-screen" class="bazarino-btn-icon" title="<?php _e('Add Screen', 'bazarino-app-config'); ?>">
+                                <span class="dashicons dashicons-plus-alt"></span>
                             </button>
                         </div>
+                        
+                        <div class="bazarino-screens-search">
+                            <input type="text" id="screens-search" placeholder="<?php _e('Search screens...', 'bazarino-app-config'); ?>" />
+                            <span class="dashicons dashicons-search"></span>
+                        </div>
+                        
                         <div id="screens-list" class="bazarino-screens-list">
-                            <!-- Screens will be loaded here via AJAX -->
+                            <div class="bazarino-loading">
+                                <div class="bazarino-spinner"></div>
+                                <p><?php _e('Loading screens...', 'bazarino-app-config'); ?></p>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="bazarino-app-builder-section">
-                        <h2><?php _e('Widgets Library', 'bazarino-app-config'); ?></h2>
-                        <div id="widgets-library" class="bazarino-widgets-library">
-                            <!-- Widgets will be loaded here via AJAX -->
+                    <div class="bazarino-sidebar-section">
+                        <div class="bazarino-section-header">
+                            <h2>
+                                <span class="dashicons dashicons-layout"></span>
+                                <?php _e('Quick Stats', 'bazarino-app-config'); ?>
+                            </h2>
+                        </div>
+                        <div class="bazarino-stats">
+                            <div class="bazarino-stat-item">
+                                <div class="bazarino-stat-value" id="total-screens">0</div>
+                                <div class="bazarino-stat-label"><?php _e('Total Screens', 'bazarino-app-config'); ?></div>
+                            </div>
+                            <div class="bazarino-stat-item">
+                                <div class="bazarino-stat-value" id="total-widgets">0</div>
+                                <div class="bazarino-stat-label"><?php _e('Total Widgets', 'bazarino-app-config'); ?></div>
+                            </div>
+                            <div class="bazarino-stat-item">
+                                <div class="bazarino-stat-value" id="active-screens">0</div>
+                                <div class="bazarino-stat-label"><?php _e('Active Screens', 'bazarino-app-config'); ?></div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="bazarino-app-builder-main">
+                <!-- Center: Canvas/Builder Area -->
+                <div class="bazarino-builder-canvas">
+                    <!-- Welcome State -->
+                    <div id="welcome-state" class="bazarino-welcome-state">
+                        <div class="bazarino-welcome-content">
+                            <span class="dashicons dashicons-smartphone bazarino-welcome-icon"></span>
+                            <h2><?php _e('Welcome to Visual App Builder', 'bazarino-app-config'); ?></h2>
+                            <p><?php _e('Create beautiful mobile apps without writing any code!', 'bazarino-app-config'); ?></p>
+                            <button type="button" class="bazarino-btn bazarino-btn-primary bazarino-btn-large" id="create-first-screen">
+                                <span class="dashicons dashicons-plus-alt"></span>
+                                <?php _e('Create Your First Screen', 'bazarino-app-config'); ?>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Screen Builder -->
                     <div id="screen-builder" class="bazarino-screen-builder" style="display: none;">
-                        <div class="bazarino-screen-builder-header">
-                            <h2 id="screen-title"><?php _e('Screen Builder', 'bazarino-app-config'); ?></h2>
-                            <div class="bazarino-screen-builder-actions">
-                                <button type="button" id="save-screen" class="button button-primary">
-                                    <?php _e('Save Screen', 'bazarino-app-config'); ?>
+                        <div class="bazarino-builder-toolbar">
+                            <div class="bazarino-toolbar-left">
+                                <button type="button" id="close-builder" class="bazarino-btn-icon" title="<?php _e('Close', 'bazarino-app-config'); ?>">
+                                    <span class="dashicons dashicons-arrow-left-alt2"></span>
                                 </button>
-                                <button type="button" id="preview-screen" class="button">
+                                <div class="bazarino-screen-info">
+                                    <input type="text" id="screen-name" class="bazarino-screen-name-input" placeholder="<?php _e('Screen Name', 'bazarino-app-config'); ?>" />
+                                    <span class="bazarino-screen-route" id="screen-route-display"></span>
+                                </div>
+                            </div>
+                            <div class="bazarino-toolbar-right">
+                                <button type="button" id="screen-settings-toggle" class="bazarino-btn-icon" title="<?php _e('Settings', 'bazarino-app-config'); ?>">
+                                    <span class="dashicons dashicons-admin-generic"></span>
+                                </button>
+                                <button type="button" id="preview-screen" class="bazarino-btn bazarino-btn-secondary">
+                                    <span class="dashicons dashicons-smartphone"></span>
                                     <?php _e('Preview', 'bazarino-app-config'); ?>
+                                </button>
+                                <button type="button" id="save-screen" class="bazarino-btn bazarino-btn-primary">
+                                    <span class="dashicons dashicons-saved"></span>
+                                    <?php _e('Save Screen', 'bazarino-app-config'); ?>
                                 </button>
                             </div>
                         </div>
                         
-                        <div class="bazarino-screen-builder-content">
-                            <div class="bazarino-screen-settings">
+                        <!-- Screen Settings Panel (Sliding) -->
+                        <div id="screen-settings-panel" class="bazarino-settings-panel" style="display: none;">
+                            <div class="bazarino-settings-header">
                                 <h3><?php _e('Screen Settings', 'bazarino-app-config'); ?></h3>
-                                <table class="form-table">
-                                    <tr>
-                                        <th scope="row">
-                                            <label for="screen-name"><?php _e('Screen Name', 'bazarino-app-config'); ?></label>
-                                        </th>
-                                        <td>
-                                            <input type="text" id="screen-name" name="screen_name" class="regular-text" />
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row">
-                                            <label for="screen-route"><?php _e('Screen Route', 'bazarino-app-config'); ?></label>
-                                        </th>
-                                        <td>
-                                            <input type="text" id="screen-route" name="screen_route" class="regular-text" />
-                                            <p class="description"><?php _e('e.g. /home, /products, /categories', 'bazarino-app-config'); ?></p>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row">
-                                            <label for="screen-type"><?php _e('Screen Type', 'bazarino-app-config'); ?></label>
-                                        </th>
-                                        <td>
-                                            <select id="screen-type" name="screen_type">
-                                                <option value="custom"><?php _e('Custom', 'bazarino-app-config'); ?></option>
-                                                <option value="home"><?php _e('Home', 'bazarino-app-config'); ?></option>
-                                                <option value="category"><?php _e('Category', 'bazarino-app-config'); ?></option>
-                                                <option value="product"><?php _e('Product', 'bazarino-app-config'); ?></option>
-                                                <option value="search"><?php _e('Search', 'bazarino-app-config'); ?></option>
-                                                <option value="profile"><?php _e('Profile', 'bazarino-app-config'); ?></option>
-                                            </select>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row">
-                                            <label for="screen-layout"><?php _e('Layout', 'bazarino-app-config'); ?></label>
-                                        </th>
-                                        <td>
-                                            <select id="screen-layout" name="screen_layout">
-                                                <option value="scroll"><?php _e('Scroll', 'bazarino-app-config'); ?></option>
-                                                <option value="grid"><?php _e('Grid', 'bazarino-app-config'); ?></option>
-                                                <option value="list"><?php _e('List', 'bazarino-app-config'); ?></option>
-                                            </select>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row">
-                                            <label for="screen-status"><?php _e('Status', 'bazarino-app-config'); ?></label>
-                                        </th>
-                                        <td>
-                                            <select id="screen-status" name="screen_status">
-                                                <option value="active"><?php _e('Active', 'bazarino-app-config'); ?></option>
-                                                <option value="inactive"><?php _e('Inactive', 'bazarino-app-config'); ?></option>
-                                            </select>
-                                        </td>
-                                    </tr>
-                                </table>
+                                <button type="button" class="bazarino-btn-icon bazarino-close-settings">
+                                    <span class="dashicons dashicons-no-alt"></span>
+                                </button>
                             </div>
-                            
-                            <div class="bazarino-widgets-container">
-                                <h3><?php _e('Widgets', 'bazarino-app-config'); ?></h3>
-                                <div class="bazarino-widgets-dropzone" id="widgets-dropzone">
-                                    <div class="bazarino-dropzone-placeholder">
-                                        <?php _e('Drag widgets here to add them to the screen', 'bazarino-app-config'); ?>
-                                    </div>
-                                    <div id="screen-widgets" class="bazarino-screen-widgets">
-                                        <!-- Screen widgets will be loaded here -->
+                            <div class="bazarino-settings-content">
+                                <div class="bazarino-setting-group">
+                                    <label><?php _e('Screen Route', 'bazarino-app-config'); ?></label>
+                                    <input type="text" id="screen-route" placeholder="/home" />
+                                    <small><?php _e('URL path for this screen', 'bazarino-app-config'); ?></small>
+                                </div>
+                                
+                                <div class="bazarino-setting-group">
+                                    <label><?php _e('Screen Type', 'bazarino-app-config'); ?></label>
+                                    <select id="screen-type">
+                                        <option value="custom"><?php _e('Custom', 'bazarino-app-config'); ?></option>
+                                        <option value="home"><?php _e('Home', 'bazarino-app-config'); ?></option>
+                                        <option value="category"><?php _e('Category', 'bazarino-app-config'); ?></option>
+                                        <option value="product"><?php _e('Product List', 'bazarino-app-config'); ?></option>
+                                        <option value="search"><?php _e('Search', 'bazarino-app-config'); ?></option>
+                                        <option value="profile"><?php _e('Profile', 'bazarino-app-config'); ?></option>
+                                    </select>
+                                </div>
+                                
+                                <div class="bazarino-setting-group">
+                                    <label><?php _e('Layout Type', 'bazarino-app-config'); ?></label>
+                                    <div class="bazarino-layout-options">
+                                        <label class="bazarino-layout-option">
+                                            <input type="radio" name="screen_layout" value="scroll" checked />
+                                            <span class="bazarino-layout-card">
+                                                <span class="dashicons dashicons-menu-alt"></span>
+                                                <span><?php _e('Scroll', 'bazarino-app-config'); ?></span>
+                                            </span>
+                                        </label>
+                                        <label class="bazarino-layout-option">
+                                            <input type="radio" name="screen_layout" value="grid" />
+                                            <span class="bazarino-layout-card">
+                                                <span class="dashicons dashicons-grid-view"></span>
+                                                <span><?php _e('Grid', 'bazarino-app-config'); ?></span>
+                                            </span>
+                                        </label>
+                                        <label class="bazarino-layout-option">
+                                            <input type="radio" name="screen_layout" value="list" />
+                                            <span class="bazarino-layout-card">
+                                                <span class="dashicons dashicons-list-view"></span>
+                                                <span><?php _e('List', 'bazarino-app-config'); ?></span>
+                                            </span>
+                                        </label>
                                     </div>
                                 </div>
+                                
+                                <div class="bazarino-setting-group">
+                                    <label class="bazarino-toggle-label">
+                                        <input type="checkbox" id="screen-status" />
+                                        <span class="bazarino-toggle-switch"></span>
+                                        <span><?php _e('Active Screen', 'bazarino-app-config'); ?></span>
+                                    </label>
+                                    <small><?php _e('Enable or disable this screen in the app', 'bazarino-app-config'); ?></small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Canvas: Phone Preview -->
+                        <div class="bazarino-canvas-area">
+                            <div class="bazarino-phone-frame">
+                                <div class="bazarino-phone-notch"></div>
+                                <div class="bazarino-phone-content">
+                                    <div class="bazarino-phone-statusbar">
+                                        <span class="bazarino-time">9:41</span>
+                                        <div class="bazarino-phone-icons">
+                                            <span class="dashicons dashicons-smartphone"></span>
+                                            <span class="dashicons dashicons-wifi"></span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="bazarino-phone-appbar">
+                                        <span class="bazarino-appbar-title" id="canvas-screen-name"><?php _e('Screen Name', 'bazarino-app-config'); ?></span>
+                                    </div>
+                                    
+                                    <div id="widgets-dropzone" class="bazarino-widgets-dropzone">
+                                        <div class="bazarino-dropzone-placeholder">
+                                            <span class="dashicons dashicons-admin-customizer"></span>
+                                            <p><?php _e('Drag widgets here to build your screen', 'bazarino-app-config'); ?></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bazarino-phone-bottom"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Sidebar: Widgets Library & Properties -->
+                <div class="bazarino-builder-sidebar bazarino-builder-sidebar-right">
+                    <div class="bazarino-sidebar-tabs">
+                        <button type="button" class="bazarino-tab-btn active" data-tab="widgets">
+                            <span class="dashicons dashicons-editor-table"></span>
+                            <?php _e('Widgets', 'bazarino-app-config'); ?>
+                        </button>
+                        <button type="button" class="bazarino-tab-btn" data-tab="properties">
+                            <span class="dashicons dashicons-admin-settings"></span>
+                            <?php _e('Properties', 'bazarino-app-config'); ?>
+                        </button>
+                    </div>
+                    
+                    <!-- Widgets Library Tab -->
+                    <div id="widgets-tab" class="bazarino-tab-content active">
+                        <div class="bazarino-widgets-search">
+                            <input type="text" id="widgets-search" placeholder="<?php _e('Search widgets...', 'bazarino-app-config'); ?>" />
+                            <span class="dashicons dashicons-search"></span>
+                        </div>
+                        
+                        <div id="widgets-library" class="bazarino-widgets-library">
+                            <div class="bazarino-loading">
+                                <div class="bazarino-spinner"></div>
+                                <p><?php _e('Loading widgets...', 'bazarino-app-config'); ?></p>
                             </div>
                         </div>
                     </div>
                     
-                    <div id="welcome-screen" class="bazarino-welcome-screen">
-                        <div class="bazarino-welcome-content">
-                            <h2><?php _e('Welcome to App Builder', 'bazarino-app-config'); ?></h2>
-                            <p><?php _e('Create custom screens and widgets for your mobile app using the drag and drop interface.', 'bazarino-app-config'); ?></p>
-                            <p><?php _e('Get started by creating a new screen or selecting an existing one from the sidebar.', 'bazarino-app-config'); ?></p>
+                    <!-- Widget Properties Tab -->
+                    <div id="properties-tab" class="bazarino-tab-content">
+                        <div id="widget-properties" class="bazarino-widget-properties">
+                            <div class="bazarino-properties-empty">
+                                <span class="dashicons dashicons-admin-settings"></span>
+                                <p><?php _e('Select a widget to edit its properties', 'bazarino-app-config'); ?></p>
+                            </div>
                         </div>
                     </div>
                 </div>
+                
             </div>
         </div>
         
