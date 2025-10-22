@@ -91,20 +91,45 @@ class Bazarino_App_Builder_Admin {
         wp_enqueue_style('wp-color-picker');
         wp_enqueue_script('wp-color-picker');
         
-        // Enqueue custom admin styles
+        // Enqueue custom admin styles with timestamp to break cache
         wp_enqueue_style(
             'bazarino-app-builder-css',
             BAZARINO_APP_CONFIG_PLUGIN_URL . 'admin/css/app-builder-style.css',
             array('wp-color-picker'),
-            BAZARINO_APP_CONFIG_VERSION
+            time() // Force cache break
         );
         
-        // Enqueue custom admin script
+        // Add inline critical CSS to ensure basic styling works
+        $critical_css = "
+            .bazarino-builder-header { 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 20px 32px; 
+                margin: -10px -12px 20px -12px; 
+            }
+            .bazarino-builder-header-content { display: flex; justify-content: space-between; align-items: center; }
+            .bazarino-builder-branding { display: flex; align-items: center; gap: 12px; }
+            .bazarino-builder-branding h1 { margin: 0; color: #fff; font-size: 24px; }
+            .bazarino-builder-container { 
+                display: grid; 
+                grid-template-columns: 280px 1fr 320px; 
+                gap: 20px; 
+                height: calc(100vh - 200px);
+            }
+            .bazarino-builder-sidebar,
+            .bazarino-builder-canvas { 
+                background: #fff; 
+                border-radius: 12px; 
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
+            }
+        ";
+        wp_add_inline_style('bazarino-app-builder-css', $critical_css);
+        
+        // Enqueue custom admin script with timestamp to break cache
         wp_enqueue_script(
             'bazarino-app-builder-js',
             BAZARINO_APP_CONFIG_PLUGIN_URL . 'admin/js/app-builder-script.js',
             array('jquery', 'jquery-ui-sortable', 'jquery-ui-draggable', 'jquery-ui-droppable', 'wp-color-picker'),
-            BAZARINO_APP_CONFIG_VERSION,
+            time(), // Force cache break
             true
         );
         
@@ -144,7 +169,16 @@ class Bazarino_App_Builder_Admin {
             return;
         }
         
+        // Debug: Output CSS URL
+        $css_url = BAZARINO_APP_CONFIG_PLUGIN_URL . 'admin/css/app-builder-style.css';
+        $js_url = BAZARINO_APP_CONFIG_PLUGIN_URL . 'admin/js/app-builder-script.js';
+        
         ?>
+        <!-- Debug Info -->
+        <!-- CSS URL: <?php echo esc_url($css_url); ?> -->
+        <!-- JS URL: <?php echo esc_url($js_url); ?> -->
+        <!-- Plugin URL: <?php echo esc_url(BAZARINO_APP_CONFIG_PLUGIN_URL); ?> -->
+        
         <div class="wrap bazarino-app-builder">
             <!-- Header -->
             <div class="bazarino-builder-header">
