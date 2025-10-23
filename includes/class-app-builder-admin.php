@@ -953,7 +953,14 @@ class Bazarino_App_Builder_Admin {
         
         if ($response->get_status() === 200) {
             $data = $response->get_data();
-            wp_send_json_success($data['data']);
+            
+            // Map database field 'id' to 'screen_id' for JavaScript compatibility
+            $screens = array_map(function($screen) {
+                $screen->screen_id = $screen->id;
+                return $screen;
+            }, $data['data']);
+            
+            wp_send_json_success($screens);
         } else {
             wp_send_json_error(__('Failed to load screens', 'bazarino-app-config'));
         }
@@ -978,11 +985,17 @@ class Bazarino_App_Builder_Admin {
         }
         
         $request = new WP_REST_Request('GET', '/bazarino/v1/app-builder/screens/' . $screen_id);
+        $request['id'] = $screen_id; // Set the ID parameter
         $response = $this->app_builder_api->get_screen($request);
         
         if ($response->get_status() === 200) {
             $data = $response->get_data();
-            wp_send_json_success($data['data']);
+            
+            // Map database field 'id' to 'screen_id' for JavaScript compatibility
+            $screen = $data['data'];
+            $screen->screen_id = $screen->id;
+            
+            wp_send_json_success($screen);
         } else {
             wp_send_json_error(__('Failed to load screen', 'bazarino-app-config'));
         }
@@ -1005,7 +1018,7 @@ class Bazarino_App_Builder_Admin {
             'route' => isset($_POST['route']) ? sanitize_text_field($_POST['route']) : '',
             'screen_type' => isset($_POST['screen_type']) ? sanitize_text_field($_POST['screen_type']) : 'custom',
             'layout' => isset($_POST['layout']) ? sanitize_text_field($_POST['layout']) : 'scroll',
-            'is_active' => isset($_POST['is_active']) ? (bool)$_POST['is_active'] : true
+            'status' => isset($_POST['is_active']) && $_POST['is_active'] ? 'active' : 'inactive'
         );
         
         if (empty($screen_data['name'])) {
@@ -1018,7 +1031,12 @@ class Bazarino_App_Builder_Admin {
         
         if ($response->get_status() === 201) {
             $data = $response->get_data();
-            wp_send_json_success($data['data']);
+            
+            // Map 'id' to 'screen_id' for JavaScript compatibility
+            $result = $data['data'];
+            $result['screen_id'] = $result['id'];
+            
+            wp_send_json_success($result);
         } else {
             wp_send_json_error(__('Failed to create screen', 'bazarino-app-config'));
         }

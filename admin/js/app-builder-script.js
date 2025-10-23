@@ -301,53 +301,114 @@ jQuery(document).ready(function($) {
     
     function getDefaultWidgets() {
         return [
+            // Layout Widgets
             {
                 widget_type: 'slider',
                 name: 'Image Slider',
                 description: 'Carousel with auto-play images',
-                icon: 'dashicons-images-alt2'
+                icon: 'dashicons-images-alt2',
+                category: 'layout'
             },
+            {
+                widget_type: 'banner',
+                name: 'Banner',
+                description: 'Promotional banner image',
+                icon: 'dashicons-format-image',
+                category: 'layout'
+            },
+            {
+                widget_type: 'text_block',
+                name: 'Text Block',
+                description: 'Rich text content area',
+                icon: 'dashicons-text',
+                category: 'layout'
+            },
+            {
+                widget_type: 'spacer',
+                name: 'Spacer',
+                description: 'Add vertical spacing',
+                icon: 'dashicons-minus',
+                category: 'layout'
+            },
+            // Product Widgets
             {
                 widget_type: 'categories',
                 name: 'Categories Grid',
                 description: 'Grid of product categories',
-                icon: 'dashicons-category'
-            },
-            {
-                widget_type: 'flash_sales',
-                name: 'Flash Sales',
-                description: 'Limited time offers banner',
-                icon: 'dashicons-tagcloud'
+                icon: 'dashicons-category',
+                category: 'products'
             },
             {
                 widget_type: 'products_grid',
                 name: 'Products Grid',
                 description: 'Grid of featured products',
-                icon: 'dashicons-products'
+                icon: 'dashicons-products',
+                category: 'products'
             },
             {
-                widget_type: 'banners',
-                name: 'Banner',
-                description: 'Promotional banner image',
-                icon: 'dashicons-format-image'
+                widget_type: 'featured_products',
+                name: 'Featured Products',
+                description: 'Showcase featured products',
+                icon: 'dashicons-star-filled',
+                category: 'products'
             },
             {
-                widget_type: 'text_block',
-                name: 'Text Block',
-                description: 'Rich text content',
-                icon: 'dashicons-text'
+                widget_type: 'recent_products',
+                name: 'Recent Products',
+                description: 'Latest added products',
+                icon: 'dashicons-clock',
+                category: 'products'
             },
             {
-                widget_type: 'spacer',
-                name: 'Spacer',
-                description: 'Empty space divider',
-                icon: 'dashicons-minus'
+                widget_type: 'sale_products',
+                name: 'Sale Products',
+                description: 'Products on sale',
+                icon: 'dashicons-tag',
+                category: 'products'
             },
             {
-                widget_type: 'divider',
-                name: 'Divider',
-                description: 'Horizontal line separator',
-                icon: 'dashicons-minus'
+                widget_type: 'flash_sales',
+                name: 'Flash Sales',
+                description: 'Limited time offers banner',
+                icon: 'dashicons-tagcloud',
+                category: 'products'
+            },
+            // Interactive Widgets
+            {
+                widget_type: 'search_bar',
+                name: 'Search Bar',
+                description: 'Product search input',
+                icon: 'dashicons-search',
+                category: 'interactive'
+            },
+            {
+                widget_type: 'button',
+                name: 'Button',
+                description: 'Clickable action button',
+                icon: 'dashicons-button',
+                category: 'interactive'
+            },
+            // Special Widgets
+            {
+                widget_type: 'countdown',
+                name: 'Countdown Timer',
+                description: 'Timer for special offers',
+                icon: 'dashicons-backup',
+                category: 'special'
+            },
+            {
+                widget_type: 'video',
+                name: 'Video Player',
+                description: 'Embedded video content',
+                icon: 'dashicons-video-alt3',
+                category: 'special'
+            },
+            {
+                widget_type: 'testimonials',
+                name: 'Testimonials',
+                description: 'Customer reviews slider',
+                icon: 'dashicons-format-quote',
+                category: 'special'
             }
         ];
     }
