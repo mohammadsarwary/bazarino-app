@@ -449,6 +449,84 @@ class Bazarino_App_Builder_Admin {
             </div>
         </div>
         
+        <!-- Create/Edit Screen Modal -->
+        <div id="screen-modal" class="bazarino-modal" style="display: none;">
+            <div class="bazarino-modal-content">
+                <div class="bazarino-modal-header">
+                    <h3 id="screen-modal-title"><?php _e('Create New Screen', 'bazarino-app-config'); ?></h3>
+                    <button type="button" class="bazarino-modal-close">&times;</button>
+                </div>
+                <div class="bazarino-modal-body">
+                    <div class="bazarino-form-group">
+                        <label for="modal-screen-name"><?php _e('Screen Name *', 'bazarino-app-config'); ?></label>
+                        <input type="text" id="modal-screen-name" class="bazarino-input" placeholder="<?php _e('e.g., Home Screen', 'bazarino-app-config'); ?>" required />
+                        <small><?php _e('A unique name for this screen', 'bazarino-app-config'); ?></small>
+                    </div>
+                    
+                    <div class="bazarino-form-group">
+                        <label for="modal-screen-route"><?php _e('Route Path *', 'bazarino-app-config'); ?></label>
+                        <input type="text" id="modal-screen-route" class="bazarino-input" placeholder="<?php _e('/home', 'bazarino-app-config'); ?>" required />
+                        <small><?php _e('URL path for this screen (e.g., /home, /products)', 'bazarino-app-config'); ?></small>
+                    </div>
+                    
+                    <div class="bazarino-form-group">
+                        <label for="modal-screen-type"><?php _e('Screen Type', 'bazarino-app-config'); ?></label>
+                        <select id="modal-screen-type" class="bazarino-select">
+                            <option value="custom"><?php _e('Custom Screen', 'bazarino-app-config'); ?></option>
+                            <option value="home"><?php _e('Home Screen', 'bazarino-app-config'); ?></option>
+                            <option value="category"><?php _e('Category Screen', 'bazarino-app-config'); ?></option>
+                            <option value="product"><?php _e('Product List', 'bazarino-app-config'); ?></option>
+                            <option value="search"><?php _e('Search Screen', 'bazarino-app-config'); ?></option>
+                            <option value="profile"><?php _e('Profile Screen', 'bazarino-app-config'); ?></option>
+                        </select>
+                    </div>
+                    
+                    <div class="bazarino-form-group">
+                        <label><?php _e('Layout Type', 'bazarino-app-config'); ?></label>
+                        <div class="bazarino-radio-group">
+                            <label class="bazarino-radio-option">
+                                <input type="radio" name="modal_screen_layout" value="scroll" checked />
+                                <span class="bazarino-radio-card">
+                                    <span class="dashicons dashicons-menu-alt"></span>
+                                    <span><?php _e('Scroll', 'bazarino-app-config'); ?></span>
+                                </span>
+                            </label>
+                            <label class="bazarino-radio-option">
+                                <input type="radio" name="modal_screen_layout" value="grid" />
+                                <span class="bazarino-radio-card">
+                                    <span class="dashicons dashicons-grid-view"></span>
+                                    <span><?php _e('Grid', 'bazarino-app-config'); ?></span>
+                                </span>
+                            </label>
+                            <label class="bazarino-radio-option">
+                                <input type="radio" name="modal_screen_layout" value="list" />
+                                <span class="bazarino-radio-card">
+                                    <span class="dashicons dashicons-list-view"></span>
+                                    <span><?php _e('List', 'bazarino-app-config'); ?></span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="bazarino-form-group">
+                        <label class="bazarino-checkbox-label">
+                            <input type="checkbox" id="modal-screen-active" checked />
+                            <span><?php _e('Make this screen active', 'bazarino-app-config'); ?></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="bazarino-modal-footer">
+                    <button type="button" class="bazarino-btn bazarino-btn-secondary bazarino-modal-close">
+                        <?php _e('Cancel', 'bazarino-app-config'); ?>
+                    </button>
+                    <button type="button" id="save-screen-modal" class="bazarino-btn bazarino-btn-primary">
+                        <span class="dashicons dashicons-saved"></span>
+                        <?php _e('Create Screen', 'bazarino-app-config'); ?>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
         <!-- Widget Modal -->
         <div id="widget-modal" class="bazarino-modal" style="display: none;">
             <div class="bazarino-modal-content">
@@ -1109,35 +1187,117 @@ class Bazarino_App_Builder_Admin {
         
         // Return available widget types
         $widgets = array(
+            // Layout Widgets
             array(
                 'widget_type' => 'slider',
                 'name' => __('Image Slider', 'bazarino-app-config'),
                 'description' => __('Carousel with auto-play images', 'bazarino-app-config'),
-                'icon' => 'dashicons-images-alt2'
+                'icon' => 'dashicons-images-alt2',
+                'category' => 'layout'
             ),
+            array(
+                'widget_type' => 'banner',
+                'name' => __('Banner', 'bazarino-app-config'),
+                'description' => __('Promotional banner image', 'bazarino-app-config'),
+                'icon' => 'dashicons-format-image',
+                'category' => 'layout'
+            ),
+            array(
+                'widget_type' => 'text_block',
+                'name' => __('Text Block', 'bazarino-app-config'),
+                'description' => __('Rich text content area', 'bazarino-app-config'),
+                'icon' => 'dashicons-text',
+                'category' => 'layout'
+            ),
+            array(
+                'widget_type' => 'spacer',
+                'name' => __('Spacer', 'bazarino-app-config'),
+                'description' => __('Add vertical spacing', 'bazarino-app-config'),
+                'icon' => 'dashicons-minus',
+                'category' => 'layout'
+            ),
+            
+            // Product Widgets
             array(
                 'widget_type' => 'categories',
                 'name' => __('Categories Grid', 'bazarino-app-config'),
                 'description' => __('Grid of product categories', 'bazarino-app-config'),
-                'icon' => 'dashicons-category'
-            ),
-            array(
-                'widget_type' => 'flash_sales',
-                'name' => __('Flash Sales', 'bazarino-app-config'),
-                'description' => __('Limited time offers banner', 'bazarino-app-config'),
-                'icon' => 'dashicons-tagcloud'
+                'icon' => 'dashicons-category',
+                'category' => 'products'
             ),
             array(
                 'widget_type' => 'products_grid',
                 'name' => __('Products Grid', 'bazarino-app-config'),
                 'description' => __('Grid of featured products', 'bazarino-app-config'),
-                'icon' => 'dashicons-products'
+                'icon' => 'dashicons-products',
+                'category' => 'products'
             ),
             array(
-                'widget_type' => 'banners',
-                'name' => __('Banner', 'bazarino-app-config'),
-                'description' => __('Promotional banner image', 'bazarino-app-config'),
-                'icon' => 'dashicons-format-image'
+                'widget_type' => 'featured_products',
+                'name' => __('Featured Products', 'bazarino-app-config'),
+                'description' => __('Showcase featured products', 'bazarino-app-config'),
+                'icon' => 'dashicons-star-filled',
+                'category' => 'products'
+            ),
+            array(
+                'widget_type' => 'recent_products',
+                'name' => __('Recent Products', 'bazarino-app-config'),
+                'description' => __('Latest added products', 'bazarino-app-config'),
+                'icon' => 'dashicons-clock',
+                'category' => 'products'
+            ),
+            array(
+                'widget_type' => 'sale_products',
+                'name' => __('Sale Products', 'bazarino-app-config'),
+                'description' => __('Products on sale', 'bazarino-app-config'),
+                'icon' => 'dashicons-tag',
+                'category' => 'products'
+            ),
+            array(
+                'widget_type' => 'flash_sales',
+                'name' => __('Flash Sales', 'bazarino-app-config'),
+                'description' => __('Limited time offers banner', 'bazarino-app-config'),
+                'icon' => 'dashicons-tagcloud',
+                'category' => 'products'
+            ),
+            
+            // Interactive Widgets
+            array(
+                'widget_type' => 'search_bar',
+                'name' => __('Search Bar', 'bazarino-app-config'),
+                'description' => __('Product search input', 'bazarino-app-config'),
+                'icon' => 'dashicons-search',
+                'category' => 'interactive'
+            ),
+            array(
+                'widget_type' => 'button',
+                'name' => __('Button', 'bazarino-app-config'),
+                'description' => __('Clickable action button', 'bazarino-app-config'),
+                'icon' => 'dashicons-button',
+                'category' => 'interactive'
+            ),
+            
+            // Special Widgets
+            array(
+                'widget_type' => 'countdown',
+                'name' => __('Countdown Timer', 'bazarino-app-config'),
+                'description' => __('Timer for special offers', 'bazarino-app-config'),
+                'icon' => 'dashicons-backup',
+                'category' => 'special'
+            ),
+            array(
+                'widget_type' => 'video',
+                'name' => __('Video Player', 'bazarino-app-config'),
+                'description' => __('Embedded video content', 'bazarino-app-config'),
+                'icon' => 'dashicons-video-alt3',
+                'category' => 'special'
+            ),
+            array(
+                'widget_type' => 'testimonials',
+                'name' => __('Testimonials', 'bazarino-app-config'),
+                'description' => __('Customer reviews slider', 'bazarino-app-config'),
+                'icon' => 'dashicons-format-quote',
+                'category' => 'special'
             )
         );
         

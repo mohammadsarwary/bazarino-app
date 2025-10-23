@@ -224,6 +224,8 @@ jQuery(document).ready(function($) {
     }
     
     function loadScreen(screenId) {
+        console.log('Loading screen:', screenId);
+        
         $.ajax({
             url: bazarinoAppBuilder.ajax_url,
             type: 'POST',
@@ -233,16 +235,20 @@ jQuery(document).ready(function($) {
                 screen_id: screenId
             },
             success: function(response) {
+                console.log('Load screen response:', response);
+                
                 if (response.success && response.data) {
                     currentScreen = response.data;
                     renderScreenBuilder(response.data);
                     loadScreenWidgets(screenId);
                 } else {
-                    showNotice('error', 'Failed to load screen');
+                    console.error('Failed to load screen:', response);
+                    showNotice('error', response.data || 'Failed to load screen');
                 }
             },
-            error: function() {
-                showNotice('error', 'Failed to load screen');
+            error: function(xhr, status, error) {
+                console.error('Load screen error:', {xhr, status, error});
+                showNotice('error', 'Failed to load screen. Check console for details.');
             }
         });
     }
@@ -854,32 +860,99 @@ jQuery(document).ready(function($) {
        SCREEN ACTIONS
        =============================================== */
     function handleAddScreen() {
-        const screenName = prompt('Enter screen name:', 'New Screen');
-        if (!screenName) return;
+        // Clear modal form
+        $('#modal-screen-name').val('');
+        $('#modal-screen-route').val('');
+        $('#modal-screen-type').val('custom');
+        $('input[name="modal_screen_layout"][value="scroll"]').prop('checked', true);
+        $('#modal-screen-active').prop('checked', true);
+        
+        // Update modal title
+        $('#screen-modal-title').text('Create New Screen');
+        $('#save-screen-modal').html('<span class="dashicons dashicons-saved"></span> Create Screen');
+        
+        // Remove existing screen ID if any
+        $('#save-screen-modal').removeData('screen-id');
+        
+        // Auto-generate route from screen name
+        $('#modal-screen-name').on('input', function() {
+            const name = $(this).val();
+            const route = '/' + name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            $('#modal-screen-route').val(route);
+        });
+        
+        // Show modal
+        $('#screen-modal').fadeIn();
+    }
+    
+    // Save screen from modal
+    $(document).on('click', '#save-screen-modal', function() {
+        const screenName = $('#modal-screen-name').val().trim();
+        const screenRoute = $('#modal-screen-route').val().trim();
+        const screenType = $('#modal-screen-type').val();
+        const layout = $('input[name="modal_screen_layout"]:checked').val();
+        const isActive = $('#modal-screen-active').is(':checked');
+        const screenId = $(this).data('screen-id');
+        
+        // Validation
+        if (!screenName) {
+            showNotice('error', 'Screen name is required');
+            return;
+        }
+        
+        if (!screenRoute) {
+            showNotice('error', 'Route path is required');
+            return;
+        }
+        
+        // Disable button
+        $(this).prop('disabled', true).html('<span class="bazarino-spinner"></span> Saving...');
+        
+        const ajaxData = {
+            nonce: bazarinoAppBuilder.nonce,
+            name: screenName,
+            route: screenRoute,
+            screen_type: screenType,
+            layout: layout,
+            is_active: isActive
+        };
+        
+        // If editing existing screen
+        if (screenId) {
+            ajaxData.action = 'bazarino_update_screen';
+            ajaxData.screen_id = screenId;
+        } else {
+            ajaxData.action = 'bazarino_create_screen';
+        }
         
         $.ajax({
             url: bazarinoAppBuilder.ajax_url,
             type: 'POST',
-            data: {
-                action: 'bazarino_create_screen',
-                nonce: bazarinoAppBuilder.nonce,
-                name: screenName,
-                route: '/' + screenName.toLowerCase().replace(/\s+/g, '-'),
-                screen_type: 'custom',
-                layout: 'scroll',
-                is_active: true
-            },
+            data: ajaxData,
             success: function(response) {
                 if (response.success && response.data) {
-                    showNotice('success', 'Screen created successfully');
+                    showNotice('success', screenId ? 'Screen updated successfully' : 'Screen created successfully');
+                    $('#screen-modal').fadeOut();
                     loadScreens();
-                    loadScreen(response.data.screen_id);
+                    
+                    // Load the screen in builder
+                    if (response.data.screen_id) {
+                        loadScreen(response.data.screen_id);
+                    }
                 } else {
-                    showNotice('error', 'Failed to create screen');
+                    showNotice('error', response.data || 'Failed to create screen');
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('Create screen error:', error);
+                showNotice('error', 'Failed to create screen. Please try again.');
+            },
+            complete: function() {
+                // Re-enable button
+                $('#save-screen-modal').prop('disabled', false).html('<span class="dashicons dashicons-saved"></span> Create Screen');
             }
         });
-    }
+    });
     
     function handleSaveScreen() {
         if (!currentScreen) {
