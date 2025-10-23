@@ -92,11 +92,12 @@ class Bazarino_App_Builder_Admin {
         wp_enqueue_script('wp-color-picker');
         
         // Enqueue custom admin styles with timestamp to break cache
+        $css_version = '2.0.' . time();
         wp_enqueue_style(
             'bazarino-app-builder-css',
             BAZARINO_APP_CONFIG_PLUGIN_URL . 'admin/css/app-builder-style.css',
             array('wp-color-picker'),
-            time() // Force cache break
+            $css_version // Force cache break
         );
         
         // Add inline critical CSS to ensure basic styling works
@@ -125,11 +126,12 @@ class Bazarino_App_Builder_Admin {
         wp_add_inline_style('bazarino-app-builder-css', $critical_css);
         
         // Enqueue custom admin script with timestamp to break cache
+        $js_version = '2.0.' . time();
         wp_enqueue_script(
             'bazarino-app-builder-js',
             BAZARINO_APP_CONFIG_PLUGIN_URL . 'admin/js/app-builder-script.js',
             array('jquery', 'jquery-ui-sortable', 'jquery-ui-draggable', 'jquery-ui-droppable', 'wp-color-picker'),
-            time(), // Force cache break
+            $js_version, // Force cache break
             true
         );
         
@@ -137,6 +139,7 @@ class Bazarino_App_Builder_Admin {
         wp_localize_script('bazarino-app-builder-js', 'bazarinoAppBuilder', array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('bazarino_app_builder_nonce'),
+            'cache_version' => $css_version,
             'strings' => array(
                 'confirm_delete_screen' => __('Are you sure you want to delete this screen?', 'bazarino-app-config'),
                 'confirm_delete_widget' => __('Are you sure you want to delete this widget?', 'bazarino-app-config'),
@@ -175,9 +178,20 @@ class Bazarino_App_Builder_Admin {
         
         ?>
         <!-- Debug Info -->
-        <!-- CSS URL: <?php echo esc_url($css_url); ?> -->
-        <!-- JS URL: <?php echo esc_url($js_url); ?> -->
+        <!-- CSS URL: <?php echo esc_url($css_url); ?>?v=<?php echo time(); ?> -->
+        <!-- JS URL: <?php echo esc_url($js_url); ?>?v=<?php echo time(); ?> -->
         <!-- Plugin URL: <?php echo esc_url(BAZARINO_APP_CONFIG_PLUGIN_URL); ?> -->
+        <!-- Cache Buster: <?php echo time(); ?> -->
+        
+        <script>
+        // Force reload CSS if needed
+        if (typeof bazarinoForceReload === 'undefined') {
+            window.bazarinoForceReload = true;
+            setTimeout(function() {
+                console.log('Bazarino App Builder loaded - Version: <?php echo time(); ?>');
+            }, 100);
+        }
+        </script>
         
         <div class="wrap bazarino-app-builder">
             <!-- Header -->
