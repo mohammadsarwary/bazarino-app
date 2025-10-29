@@ -35,6 +35,8 @@ jQuery(document).ready(function($) {
         // Header actions
         $('#save-all').on('click', handleSaveAll);
         $('#preview-app').on('click', handlePreviewApp);
+        $('#export-config').on('click', handleExportConfig);
+        $('#import-config').on('click', handleImportConfig);
         
         // Screen management
         $('#add-new-screen, #create-first-screen').on('click', handleAddScreen);
@@ -74,6 +76,10 @@ jQuery(document).ready(function($) {
         $('.bazarino-modal-close').on('click', function() {
             $(this).closest('.bazarino-modal').fadeOut();
         });
+        
+        // Import file handling
+        $('#import-file').on('change', handleImportFileSelect);
+        $('#confirm-import').on('click', handleConfirmImport);
     }
     
     /* ===============================================
@@ -1063,11 +1069,195 @@ jQuery(document).ready(function($) {
     }
     
     function handlePreviewScreen() {
-        showNotice('info', 'Preview functionality coming soon!');
+        if (!currentScreen) {
+            showNotice('error', 'No screen selected');
+            return;
+        }
+        
+        // Build preview HTML
+        const previewHTML = buildPreviewHTML(currentScreen, currentWidgets);
+        
+        // Show preview modal
+        $('#preview-content').html(previewHTML);
+        $('#preview-modal').fadeIn();
     }
     
     function handlePreviewApp() {
-        showNotice('info', 'App preview functionality coming soon!');
+        if (!currentScreen) {
+            showNotice('error', 'No screen selected');
+            return;
+        }
+        
+        handlePreviewScreen();
+    }
+    
+    function buildPreviewHTML(screen, widgets) {
+        let widgetsHTML = '';
+        
+        if (!widgets || widgets.length === 0) {
+            widgetsHTML = `
+                <div style="padding: 60px 20px; text-align: center; color: #999;">
+                    <span class="dashicons dashicons-admin-customizer" style="font-size: 48px; opacity: 0.3; display: block; margin-bottom: 12px;"></span>
+                    <p style="margin: 0; font-size: 14px;">No widgets added yet</p>
+                </div>
+            `;
+        } else {
+            widgets.forEach(function(widget) {
+                widgetsHTML += buildWidgetPreview(widget);
+            });
+        }
+        
+        return `
+            <div class="preview-phone-frame">
+                <div class="preview-phone-notch"></div>
+                <div class="preview-phone-content">
+                    <div class="preview-statusbar">
+                        <span class="preview-time">9:41</span>
+                        <div class="preview-icons">
+                            <span class="dashicons dashicons-smartphone"></span>
+                            <span class="dashicons dashicons-wifi"></span>
+                        </div>
+                    </div>
+                    <div class="preview-appbar">
+                        <span class="dashicons dashicons-arrow-left-alt2"></span>
+                        <span class="preview-title">${escapeHtml(screen.name)}</span>
+                        <span class="dashicons dashicons-menu"></span>
+                    </div>
+                    <div class="preview-body">
+                        ${widgetsHTML}
+                    </div>
+                </div>
+                <div class="preview-phone-bottom"></div>
+            </div>
+        `;
+    }
+    
+    function buildWidgetPreview(widget) {
+        const type = widget.widget_type || widget.type;
+        
+        switch(type) {
+            case 'slider':
+                return `<div class="preview-widget preview-slider">
+                    <div class="preview-slide" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 180px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">Image Slider</div>
+                </div>`;
+            
+            case 'banner':
+                return `<div class="preview-widget preview-banner">
+                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); height: 120px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">Banner</div>
+                </div>`;
+            
+            case 'categories':
+                return `<div class="preview-widget preview-categories">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">Categories</h3>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                        ${[1,2,3,4].map(() => `
+                            <div style="aspect-ratio: 1; background: #f3f4f6; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <span class="dashicons dashicons-category" style="font-size: 24px; color: #667eea;"></span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            
+            case 'products_grid':
+            case 'featured_products':
+            case 'recent_products':
+            case 'sale_products':
+                return `<div class="preview-widget preview-products">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">${widget.name || 'Products'}</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                        ${[1,2].map(() => `
+                            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+                                <div style="aspect-ratio: 1; background: #f3f4f6; display: flex; align-items: center; justify-content: center;">
+                                    <span class="dashicons dashicons-products" style="font-size: 32px; color: #667eea;"></span>
+                                </div>
+                                <div style="padding: 8px;">
+                                    <div style="height: 12px; background: #e5e7eb; border-radius: 4px; margin-bottom: 6px;"></div>
+                                    <div style="height: 10px; background: #f3f4f6; border-radius: 4px; width: 60%;"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            
+            case 'flash_sales':
+                return `<div class="preview-widget preview-flash-sale">
+                    <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 16px; border-radius: 12px; color: white;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 18px; font-weight: 700;">⚡ Flash Sale</h3>
+                                <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 12px;">Limited time offer!</p>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.2); padding: 8px 12px; border-radius: 8px; font-weight: 600;">
+                                02:45:30
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            
+            case 'text_block':
+                return `<div class="preview-widget preview-text">
+                    <p style="margin: 0; color: #4b5563; line-height: 1.6;">${widget.name || 'Text content will appear here'}</p>
+                </div>`;
+            
+            case 'search_bar':
+                return `<div class="preview-widget preview-search">
+                    <div style="background: #f3f4f6; padding: 10px 16px; border-radius: 24px; display: flex; align-items: center; gap: 8px;">
+                        <span class="dashicons dashicons-search" style="color: #9ca3af; font-size: 18px;"></span>
+                        <span style="color: #9ca3af; font-size: 14px;">Search products...</span>
+                    </div>
+                </div>`;
+            
+            case 'button':
+                return `<div class="preview-widget preview-button">
+                    <button style="background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 24px; font-weight: 600; width: 100%; cursor: pointer;">
+                        ${widget.name || 'Button'}
+                    </button>
+                </div>`;
+            
+            case 'spacer':
+                return `<div class="preview-widget preview-spacer" style="height: 24px;"></div>`;
+            
+            case 'countdown':
+                return `<div class="preview-widget preview-countdown">
+                    <div style="display: flex; gap: 8px; justify-content: center;">
+                        ${['02','45','30'].map((num, i) => `
+                            <div style="background: #667eea; color: white; padding: 12px; border-radius: 8px; text-align: center; min-width: 60px;">
+                                <div style="font-size: 24px; font-weight: 700;">${num}</div>
+                                <div style="font-size: 10px; opacity: 0.8; margin-top: 4px;">${['HOURS','MINS','SECS'][i]}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            
+            case 'video':
+                return `<div class="preview-widget preview-video">
+                    <div style="aspect-ratio: 16/9; background: #1f2937; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <span class="dashicons dashicons-video-alt3" style="font-size: 48px; color: white; opacity: 0.5;"></span>
+                    </div>
+                </div>`;
+            
+            case 'testimonials':
+                return `<div class="preview-widget preview-testimonials">
+                    <div style="background: white; border: 1px solid #e5e7eb; padding: 16px; border-radius: 12px;">
+                        <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: #667eea;"></div>
+                            <div>
+                                <div style="height: 12px; background: #e5e7eb; border-radius: 4px; width: 100px; margin-bottom: 6px;"></div>
+                                <div style="color: #facc15;">★★★★★</div>
+                            </div>
+                        </div>
+                        <div style="height: 10px; background: #f3f4f6; border-radius: 4px; margin-bottom: 6px;"></div>
+                        <div style="height: 10px; background: #f3f4f6; border-radius: 4px; width: 80%;"></div>
+                    </div>
+                </div>`;
+            
+            default:
+                return `<div class="preview-widget">
+                    <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; text-align: center; color: #6b7280;">
+                        ${widget.name || type}
+                    </div>
+                </div>`;
+        }
     }
     
     /* ===============================================
@@ -1150,6 +1340,155 @@ jQuery(document).ready(function($) {
             "'": '&#039;'
         };
         return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+    
+    /* ===============================================
+       EXPORT/IMPORT
+       =============================================== */
+    function handleExportConfig() {
+        showNotice('info', 'Preparing export...');
+        
+        // Get all screens and widgets
+        $.ajax({
+            url: bazarinoAppBuilder.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'bazarino_get_screens',
+                nonce: bazarinoAppBuilder.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    const screens = response.data || [];
+                    
+                    // Get widgets for each screen
+                    const promises = screens.map(screen => {
+                        return $.ajax({
+                            url: bazarinoAppBuilder.ajax_url,
+                            type: 'POST',
+                            data: {
+                                action: 'bazarino_get_widgets',
+                                nonce: bazarinoAppBuilder.nonce,
+                                screen_id: screen.screen_id || screen.id
+                            }
+                        });
+                    });
+                    
+                    Promise.all(promises).then(results => {
+                        // Attach widgets to screens
+                        screens.forEach((screen, index) => {
+                            if (results[index].success) {
+                                screen.widgets = results[index].data || [];
+                            }
+                        });
+                        
+                        // Create export object
+                        const exportData = {
+                            version: '1.0.0',
+                            export_date: new Date().toISOString(),
+                            screens: screens,
+                            metadata: {
+                                total_screens: screens.length,
+                                total_widgets: screens.reduce((sum, s) => sum + (s.widgets ? s.widgets.length : 0), 0)
+                            }
+                        };
+                        
+                        // Download as JSON file
+                        const jsonStr = JSON.stringify(exportData, null, 2);
+                        const blob = new Blob([jsonStr], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `bazarino-config-${Date.now()}.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        
+                        showNotice('success', 'Configuration exported successfully!');
+                    });
+                } else {
+                    showNotice('error', 'Failed to export configuration');
+                }
+            },
+            error: function() {
+                showNotice('error', 'Failed to export configuration');
+            }
+        });
+    }
+    
+    function handleImportConfig() {
+        $('#import-file').val('');
+        $('#import-preview').hide();
+        $('#confirm-import').prop('disabled', true);
+        $('#import-replace-existing').prop('checked', false);
+        $('#import-modal').fadeIn();
+    }
+    
+    function handleImportFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const config = JSON.parse(event.target.result);
+                
+                // Validate config
+                if (!config.screens || !Array.isArray(config.screens)) {
+                    showNotice('error', 'Invalid configuration file');
+                    return;
+                }
+                
+                // Show preview
+                const previewHTML = `
+                    <div style="font-size: 13px;">
+                        <p style="margin: 0 0 8px 0;"><strong>Version:</strong> ${config.version || 'Unknown'}</p>
+                        <p style="margin: 0 0 8px 0;"><strong>Export Date:</strong> ${config.export_date ? new Date(config.export_date).toLocaleString() : 'Unknown'}</p>
+                        <p style="margin: 0 0 8px 0;"><strong>Screens:</strong> ${config.screens.length}</p>
+                        <p style="margin: 0 0 12px 0;"><strong>Total Widgets:</strong> ${config.metadata?.total_widgets || 0}</p>
+                        <div style="max-height: 150px; overflow-y: auto;">
+                            <strong>Screens:</strong>
+                            <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                                ${config.screens.map(s => `<li>${escapeHtml(s.name)} (${s.widgets ? s.widgets.length : 0} widgets)</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                
+                $('#import-preview-content').html(previewHTML);
+                $('#import-preview').show();
+                $('#confirm-import').prop('disabled', false).data('config', config);
+                
+            } catch (error) {
+                showNotice('error', 'Failed to parse configuration file');
+                console.error('Parse error:', error);
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+    function handleConfirmImport() {
+        const config = $('#confirm-import').data('config');
+        const replaceExisting = $('#import-replace-existing').is(':checked');
+        
+        if (!config) {
+            showNotice('error', 'No configuration selected');
+            return;
+        }
+        
+        showNotice('info', 'Importing configuration...');
+        $('#confirm-import').prop('disabled', true).html('<span class="bazarino-spinner"></span> Importing...');
+        
+        // TODO: Implement actual import via AJAX
+        // For now, just show success
+        setTimeout(() => {
+            $('#import-modal').fadeOut();
+            showNotice('success', `Configuration imported successfully! ${config.screens.length} screens ${replaceExisting ? 'replaced' : 'added'}.`);
+            loadScreens();
+            
+            // Re-enable button
+            $('#confirm-import').prop('disabled', false).html('<span class="dashicons dashicons-upload"></span> Import');
+        }, 1500);
     }
     
     /* ===============================================

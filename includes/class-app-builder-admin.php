@@ -203,6 +203,14 @@ class Bazarino_App_Builder_Admin {
                         <span class="bazarino-builder-version">v1.0.0</span>
                     </div>
                     <div class="bazarino-builder-header-actions">
+                        <button type="button" id="export-config" class="bazarino-btn bazarino-btn-secondary">
+                            <span class="dashicons dashicons-download"></span>
+                            <?php _e('Export', 'bazarino-app-config'); ?>
+                        </button>
+                        <button type="button" id="import-config" class="bazarino-btn bazarino-btn-secondary">
+                            <span class="dashicons dashicons-upload"></span>
+                            <?php _e('Import', 'bazarino-app-config'); ?>
+                        </button>
                         <button type="button" id="preview-app" class="bazarino-btn bazarino-btn-secondary">
                             <span class="dashicons dashicons-visibility"></span>
                             <?php _e('Preview App', 'bazarino-app-config'); ?>
@@ -218,7 +226,7 @@ class Bazarino_App_Builder_Admin {
             <div id="bazarino-app-builder-notices"></div>
             
             <!-- Main Container - 3 Column Layout -->
-            <div class="bazarino-builder-container">
+            <div class="bazarino-builder-container" style="height: fit-content;">
                 
                 <!-- Left Sidebar: Screens Management -->
                 <div class="bazarino-builder-sidebar bazarino-builder-sidebar-left">
@@ -568,6 +576,50 @@ class Bazarino_App_Builder_Admin {
                 </div>
             </div>
         </div>
+        
+        <!-- Import Modal -->
+        <div id="import-modal" class="bazarino-modal" style="display: none;">
+            <div class="bazarino-modal-content">
+                <div class="bazarino-modal-header">
+                    <h3><?php _e('Import Configuration', 'bazarino-app-config'); ?></h3>
+                    <button type="button" class="bazarino-modal-close">&times;</button>
+                </div>
+                <div class="bazarino-modal-body">
+                    <div class="bazarino-form-group">
+                        <label><?php _e('Select Configuration File', 'bazarino-app-config'); ?></label>
+                        <input type="file" id="import-file" accept=".json" class="bazarino-input" />
+                        <small><?php _e('Upload a JSON configuration file exported from App Builder', 'bazarino-app-config'); ?></small>
+                    </div>
+                    
+                    <div class="bazarino-form-group">
+                        <label class="bazarino-checkbox-label">
+                            <input type="checkbox" id="import-replace-existing" />
+                            <span><?php _e('Replace existing configuration', 'bazarino-app-config'); ?></span>
+                        </label>
+                        <small style="display: block; margin-top: 6px;"><?php _e('If unchecked, imported screens will be added to existing ones', 'bazarino-app-config'); ?></small>
+                    </div>
+                    
+                    <div id="import-preview" style="display: none; margin-top: 16px;">
+                        <h4><?php _e('Import Preview:', 'bazarino-app-config'); ?></h4>
+                        <div id="import-preview-content" style="background: #f3f4f6; padding: 12px; border-radius: 8px; max-height: 200px; overflow-y: auto;">
+                        </div>
+                    </div>
+                </div>
+                <div class="bazarino-modal-footer">
+                    <button type="button" class="bazarino-btn bazarino-btn-secondary bazarino-modal-close">
+                        <?php _e('Cancel', 'bazarino-app-config'); ?>
+                    </button>
+                    <button type="button" id="confirm-import" class="bazarino-btn bazarino-btn-primary" disabled>
+                        <span class="dashicons dashicons-upload"></span>
+                        <?php _e('Import', 'bazarino-app-config'); ?>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Hidden file input for import -->
+        <input type="file" id="hidden-import-input" accept=".json" style="display: none;" />
+        
         <?php
     }
     

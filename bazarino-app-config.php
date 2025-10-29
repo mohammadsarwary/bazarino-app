@@ -63,6 +63,13 @@ class Bazarino_App_Config {
         require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-app-builder-api.php';
         require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-app-builder-admin.php';
         require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/class-app-builder-debug.php';
+        
+        // Widget classes
+        require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/widgets/class-widget-slider.php';
+        require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/widgets/class-widget-categories.php';
+        require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/widgets/class-widget-flash-sales.php';
+        require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/widgets/class-widget-products.php';
+        require_once BAZARINO_APP_CONFIG_PLUGIN_DIR . 'includes/widgets/class-widget-banners.php';
     }
     
     /**

@@ -184,7 +184,7 @@
     gap: 20px;
     max-width: 1920px;
     margin: 0 auto;
-    height: calc(100vh - 200px);
+    height: fit-content;;
 }
 
 /* ===============================================
@@ -1269,6 +1269,119 @@ select.bazarino-property-input {
     background: rgba(59, 130, 246, 0.1);
     border-left: 4px solid var(--info-color);
     color: #1e40af;
+}
+
+/* ===============================================
+   PREVIEW MODAL
+   =============================================== */
+.bazarino-preview-modal .bazarino-modal-content {
+    max-width: 500px;
+    background: #1f2937;
+}
+
+.bazarino-preview-container {
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 600px;
+}
+
+.preview-phone-frame {
+    width: 375px;
+    background: #1f2937;
+    border-radius: 40px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    position: relative;
+}
+
+.preview-phone-notch {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 30px;
+    background: #000;
+    border-radius: 0 0 20px 20px;
+    z-index: 10;
+}
+
+.preview-phone-content {
+    background: #f3f4f6;
+    height: 750px;
+    overflow-y: auto;
+}
+
+.preview-statusbar {
+    height: 44px;
+    background: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    padding-top: 8px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.preview-time {
+    color: #000;
+}
+
+.preview-icons {
+    display: flex;
+    gap: 4px;
+    color: #000;
+}
+
+.preview-appbar {
+    height: 56px;
+    background: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.preview-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.preview-body {
+    padding: 16px;
+    min-height: calc(750px - 44px - 56px);
+}
+
+.preview-widget {
+    margin-bottom: 16px;
+}
+
+.preview-widget:last-child {
+    margin-bottom: 0;
+}
+
+.preview-phone-bottom {
+    height: 34px;
+    background: #000;
+}
+
+/* Scrollbar for preview */
+.preview-phone-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.preview-phone-content::-webkit-scrollbar-track {
+    background: #e5e7eb;
+}
+
+.preview-phone-content::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+    border-radius: 4px;
 }
 
 /* ===============================================
